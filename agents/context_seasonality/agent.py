@@ -813,9 +813,13 @@ def context_seasonality_agent(
         "agent_results",
         {},
     )
+    shared_context = state.get(
+    "shared_context",
+    {},
+)
 
-    shared_data = state.get(
-        "shared_data",
+    shared_data = shared_context.get(
+        "data",
         {},
     )
 

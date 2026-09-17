@@ -1,12 +1,12 @@
 {
   "agent": "ContextSeasonalityAgent",
-  "version": "1.1",
+  "version": "1.2",
   "summary": {
-    "rows": 90935,
+    "rows": 1818,
     "start_date": "2021-01-01",
     "end_date": "2025-12-31",
     "restaurants": 1,
-    "menu_items": 50,
+    "menu_items": 1,
     "missing_quantity": 0,
     "output_files": [
       "C:\\Users\\saaral\\Desktop\\hackathon\\code\\Show-Me-Your-Agents\\data\\processed\\context_features.csv",
