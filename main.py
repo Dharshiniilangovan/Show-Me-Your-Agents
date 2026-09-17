@@ -539,24 +539,6 @@ def get_data_analyst_output(state):
         "agent_results",
         {}
     )
-    # --------------------------------------------------------
-# SHARE UNIFIED DATA LOCATION WITH OTHER AGENTS
-# --------------------------------------------------------
-
-    state.setdefault(
-        "shared_data",
-        {}
-    )
-
-    state["shared_data"]["unified_demand_path"] = str(
-        DATA_ANALYST_OUTPUT_PATH
-    )
-
-    print(
-        "[INTEGRATION] Unified data available at:",
-        state["shared_data"]["unified_demand_path"]
-    )
-
     data_result = results.get(
         "data_analyst"
     )
@@ -618,6 +600,21 @@ def run_data_analyst(state):
     # Run Data Analyst AND save the complete processed dataset
     result = data_agent.run(
         str(DATA_ANALYST_OUTPUT_PATH)
+    )
+
+    # --------------------------------------------------------
+    # REGISTER DATA ANALYST OUTPUT IN SHARED CONTEXT
+    # --------------------------------------------------------
+
+    state["shared_context"]["data"][
+        "unified_demand_path"
+    ] = str(DATA_ANALYST_OUTPUT_PATH)
+
+    print(
+        "[SHARED CONTEXT] Unified demand:",
+        state["shared_context"]["data"][
+            "unified_demand_path"
+        ]
     )
 
     # --------------------------------------------------------
@@ -766,6 +763,40 @@ def run_context_seasonality(state):
 
     raw_result = seasonality_agent.run(
         filtered_data
+    )
+
+    # --------------------------------------------------------
+    # REGISTER CONTEXT / SEASONALITY OUTPUTS IN SHARED CONTEXT
+    # --------------------------------------------------------
+
+    project_root = Path(__file__).resolve().parent
+
+    state["shared_context"]["data"][
+        "context_features_path"
+    ] = str(
+        project_root
+        / "data"
+        / "processed"
+        / "context_features.csv"
+    )
+
+    state["shared_context"]["context"][
+        "context_signals_path"
+    ] = str(
+        CONTEXT_OUTPUT_DIR
+        / "sku_context_signals.csv"
+    )
+
+    state["shared_context"]["context"][
+        "agent_context_path"
+    ] = str(
+        CONTEXT_OUTPUT_DIR
+        / "agent_context.json"
+    )
+
+    print(
+        "[SHARED CONTEXT] "
+        "Context / Seasonality outputs registered."
     )
 
     # --------------------------------------------------------
@@ -1404,6 +1435,19 @@ def run_customer_pattern(state):
             state,
             data
         )
+    )
+
+    # --------------------------------------------------------
+    # REGISTER CUSTOMER PATTERN OUTPUT IN SHARED CONTEXT
+    # --------------------------------------------------------
+
+    state["shared_context"][
+        "customer_pattern"
+    ] = result
+
+    print(
+        "[SHARED CONTEXT] "
+        "Customer pattern registered."
     )
 
     print(
