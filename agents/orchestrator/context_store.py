@@ -1,12 +1,17 @@
 class ContextStore:
     """
-    Stores conversation memory and workflow execution state.
+    Stores:
+    1. Conversation memory
+    2. Workflow execution state
+    3. Shared knowledge/context for communication between agents
     """
 
     def __init__(self):
 
+        # Stores workflow contexts using request_id
         self.context = {}
 
+        # Stores conversational information between user turns
         self.conversation = (
             self._empty_conversation()
         )
@@ -26,6 +31,7 @@ class ContextStore:
             "restaurant_id": None,
             "restaurant_name": None,
             "restaurant_scope": None,
+
             "holiday_name": None,
             "special_event_name": None,
 
@@ -37,8 +43,8 @@ class ContextStore:
 
             "promotion_percentage": None,
 
-            # Tells Groq what parameter the chatbot
-            # is currently waiting for.
+            # Tells the orchestrator what parameter
+            # it is currently waiting for.
             "awaiting_parameter": None
         }
 
@@ -61,14 +67,21 @@ class ContextStore:
 
         for key, value in new_data.items():
 
+            # Ignore fields that are not part
+            # of conversation memory
             if key not in self.conversation:
                 continue
 
+            # Do not overwrite existing information
+            # with None
             if value is None:
                 continue
 
-            # Parameter-only follow-ups return [].
-            # Do not erase previously stored capabilities.
+            # Parameter-only follow-up responses may
+            # return an empty capability list.
+            #
+            # Do not erase previously identified
+            # capabilities in that situation.
             if (
                 key == "required_capabilities"
                 and value == []
@@ -127,6 +140,10 @@ class ContextStore:
 
         state = {
 
+            # ------------------------------------------------
+            # REQUEST INFORMATION
+            # ------------------------------------------------
+
             "request_id":
                 request_id,
 
@@ -136,11 +153,19 @@ class ContextStore:
             "goal":
                 goal,
 
+            # ------------------------------------------------
+            # ORCHESTRATOR INFORMATION
+            # ------------------------------------------------
+
             "required_capabilities":
                 required_capabilities,
 
             "required_agents":
                 required_agents,
+
+            # ------------------------------------------------
+            # WORKFLOW STATUS
+            # ------------------------------------------------
 
             "workflow_status": {
 
@@ -149,13 +174,87 @@ class ContextStore:
                 for agent in required_agents
             },
 
+            # ------------------------------------------------
+            # AGENT RESULTS
+            # ------------------------------------------------
+            #
+            # Stores the actual results returned during
+            # this workflow.
+            #
+            # Example:
+            #
+            # agent_results["data_analyst"]
+            # agent_results["context_seasonality"]
+            # agent_results["customer_pattern"]
+            #
+            # ------------------------------------------------
+
             "agent_results": {},
 
+            # =================================================
+            # SHARED KNOWLEDGE / CONTEXT STORE
+            # =================================================
+            #
+            # This is the common layer used by agents to
+            # discover reusable outputs produced by other
+            # agents.
+            #
+            # Agents should not need to hard-code each
+            # other's file locations.
+            #
+            # =================================================
+
+            "shared_context": {
+
+                # ---------------------------------------------
+                # DATA ANALYST OUTPUTS
+                # ---------------------------------------------
+
+                "data": {
+
+                    # Full cleaned + processed dataset
+                    "unified_demand_path": None,
+
+                    # Context-enhanced dataset generated
+                    # by Context / Seasonality
+                    "context_features_path": None
+                },
+
+                # ---------------------------------------------
+                # CONTEXT / SEASONALITY OUTPUTS
+                # ---------------------------------------------
+
+                "context": {
+
+                    # Restaurant/SKU historical
+                    # context signals
+                    "context_signals_path": None,
+
+                    # Machine-readable Context Agent contract
+                    "agent_context_path": None
+                },
+
+                # ---------------------------------------------
+                # CUSTOMER PATTERN OUTPUT
+                # ---------------------------------------------
+
+                "customer_pattern": None
+            },
+
+            # ------------------------------------------------
+            # WORKFLOW ERRORS
+            # ------------------------------------------------
+
             "errors": [],
+
+            # ------------------------------------------------
+            # OVERALL WORKFLOW STATUS
+            # ------------------------------------------------
 
             "status": "processing"
         }
 
+        # Save the state using request_id
         self.context[
             request_id
         ] = state
@@ -188,3 +287,5 @@ class ContextStore:
         self.context[
             request_id
         ] = state
+
+        return state
