@@ -1,0 +1,68 @@
+{
+  "agent": "ContextSeasonalityAgent",
+  "version": "1.1",
+  "summary": {
+    "rows": 90935,
+    "start_date": "2021-01-01",
+    "end_date": "2025-12-31",
+    "restaurants": 1,
+    "menu_items": 50,
+    "missing_quantity": 0,
+    "output_files": [
+      "C:\\Users\\saaral\\Desktop\\hackathon\\code\\Show-Me-Your-Agents\\data\\processed\\context_features.csv",
+      "C:\\Users\\saaral\\Desktop\\hackathon\\code\\Show-Me-Your-Agents\\data\\outputs\\seasonality_weekday.csv",
+      "C:\\Users\\saaral\\Desktop\\hackathon\\code\\Show-Me-Your-Agents\\data\\outputs\\seasonality_month.csv",
+      "C:\\Users\\saaral\\Desktop\\hackathon\\code\\Show-Me-Your-Agents\\data\\outputs\\seasonality_quarter.csv",
+      "C:\\Users\\saaral\\Desktop\\hackathon\\code\\Show-Me-Your-Agents\\data\\outputs\\seasonality_week_of_year.csv",
+      "C:\\Users\\saaral\\Desktop\\hackathon\\code\\Show-Me-Your-Agents\\data\\outputs\\holiday_impact.csv",
+      "C:\\Users\\saaral\\Desktop\\hackathon\\code\\Show-Me-Your-Agents\\data\\outputs\\promotion_impact.csv",
+      "C:\\Users\\saaral\\Desktop\\hackathon\\code\\Show-Me-Your-Agents\\data\\outputs\\event_impact.csv",
+      "C:\\Users\\saaral\\Desktop\\hackathon\\code\\Show-Me-Your-Agents\\data\\outputs\\weather_temperature.csv",
+      "C:\\Users\\saaral\\Desktop\\hackathon\\code\\Show-Me-Your-Agents\\data\\outputs\\weather_precipitation.csv",
+      "C:\\Users\\saaral\\Desktop\\hackathon\\code\\Show-Me-Your-Agents\\data\\outputs\\weather_precip_type.csv",
+      "C:\\Users\\saaral\\Desktop\\hackathon\\code\\Show-Me-Your-Agents\\data\\outputs\\sku_context_signals.csv"
+    ]
+  },
+  "feature_contract": {
+    "forecast_keys": [
+      "date",
+      "restaurant_id",
+      "menu_item_id"
+    ],
+    "target": "quantity",
+    "categorical_context_features": [
+      "holiday_name",
+      "special_event_name",
+      "precip_type"
+    ],
+    "numeric_context_features": [
+      "dow_sin",
+      "dow_cos",
+      "month_sin",
+      "month_cos",
+      "doy_sin",
+      "doy_cos",
+      "week_of_year",
+      "quarter",
+      "day_of_month",
+      "is_month_start",
+      "is_month_end",
+      "is_weekend",
+      "is_holiday",
+      "is_special_event",
+      "is_promotion",
+      "avg_temp_f",
+      "temp_c",
+      "precip_inches",
+      "has_precipitation",
+      "context_event_count",
+      "is_context_day",
+      "weekend_promotion",
+      "holiday_promotion",
+      "event_promotion",
+      "precipitation_weekend"
+    ],
+    "historical_signal_file": "sku_context_signals.csv",
+    "signal_note": "Historical uplifts are descriptive associations, not causal effects."
+  }
+}

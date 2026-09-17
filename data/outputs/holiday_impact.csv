@@ -1,0 +1,17 @@
+is_holiday,holiday_name,mean,median,count,baseline_mean,baseline_count,uplift_pct,interpretation
+1,Christmas Day,17.556,15.0,250,34.96114724408552,87793,-49.78425657078516,descriptive_association_not_causal
+1,Christmas Day (observed),18.306122448979593,16.0,98,34.96114724408552,87793,-47.638667801221835,descriptive_association_not_causal
+1,Columbus Day,32.908,29.0,250,34.96114724408552,87793,-5.872654091558315,descriptive_association_not_causal
+1,Independence Day,87.24096385542168,74.0,249,34.96114724408552,87793,149.5369023400126,descriptive_association_not_causal
+1,Independence Day (observed),68.6,61.5,50,34.96114724408552,87793,96.2178172273945,descriptive_association_not_causal
+1,Juneteenth National Independence Day,54.86746987951807,47.0,249,34.96114724408552,87793,56.938413652315624,descriptive_association_not_causal
+1,Juneteenth National Independence Day (observed),63.54,49.5,100,34.96114724408552,87793,81.74460796834764,descriptive_association_not_causal
+1,Labor Day,44.685483870967744,39.0,248,34.96114724408552,87793,27.81469543602384,descriptive_association_not_causal
+1,Martin Luther King Jr. Day,26.453815261044177,22.0,249,34.96114724408552,87793,-24.333675104098738,descriptive_association_not_causal
+1,Memorial Day,43.224,39.0,250,34.96114724408552,87793,23.63438676147085,descriptive_association_not_causal
+1,New Year's Day,35.89156626506024,30.0,249,34.96114724408552,87793,2.6612943061590455,descriptive_association_not_causal
+1,New Year's Day (observed),33.26,29.5,100,34.96114724408552,87793,-4.865822143102894,descriptive_association_not_causal
+1,Thanksgiving Day,18.432,15.0,250,34.96114724408552,87793,-47.27861797178811,descriptive_association_not_causal
+1,Veterans Day,34.328,31.0,250,34.96114724408552,87793,-1.8110024813119519,descriptive_association_not_causal
+1,Veterans Day (observed),37.56,33.0,50,34.96114724408552,87793,7.43354540905159,descriptive_association_not_causal
+1,Washington's Birthday,26.304,23.0,250,34.96114724408552,87793,-24.762194397239277,descriptive_association_not_causal

@@ -1,0 +1,6 @@
+is_special_event,special_event_name,mean,median,count,baseline_mean,baseline_count,uplift_pct,interpretation
+1,Chicago Blues Festival,59.901069518716575,52.0,748,34.25584796979352,88193,74.86377675291169,descriptive_association_not_causal
+1,Halloween on State Street,40.50403225806452,36.0,248,34.25584796979352,88193,18.2397595113704,descriptive_association_not_causal
+1,Lollapalooza Weekend,65.97994652406418,59.0,748,34.25584796979352,88193,92.60929281985564,descriptive_association_not_causal
+1,St. Patrick's Day Parade,43.004,37.0,250,34.25584796979352,88193,25.537689325105937,descriptive_association_not_causal
+1,Taste of Chicago,73.8288770053476,64.0,748,34.25584796979352,88193,115.52196597336955,descriptive_association_not_causal
