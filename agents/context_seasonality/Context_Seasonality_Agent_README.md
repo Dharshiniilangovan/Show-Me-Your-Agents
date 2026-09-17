@@ -38,10 +38,20 @@ downstream forecasting and reasoning components.
 
 ## 2. Position in the Multi-Agent Architecture
 
-``` text
-Raw / Processed QSR Data
-          |
-          v
+Raw QSR Data
+     |
+     v
+Data Analyst Agent
+     |
+     | preprocessing
+     v
+Unified Processed CSV
+     |
+     | path stored in
+     v
+state["shared_data"]["unified_demand_path"]
+     |
+     v
 +------------------------------+
 | Context & Seasonality Agent  |
 +------------------------------+
@@ -100,23 +110,18 @@ python -m pytest -q
 
 ## 4. Input Dataset
 
-### 4.1 Primary input
+## Primary Runtime Input
 
-Default input:
+The Context & Seasonality Agent does **not** load the raw QSR
+dataset directly.
 
-``` text
-data/raw/qsr_demand_dataset.csv
-```
+Generic data preprocessing is owned by the **Data Analyst Agent**.
 
-The validated dataset used by v1.1 contains:
+The Data Analyst Agent produces the final unified/processed demand
+CSV and exposes its location through the common shared state:
 
-  Property                                       Value
-  ------------------------- --------------------------
-  Rows                                       1,369,500
-  Date range                  2021-01-01 to 2025-12-31
-  Restaurants                                       15
-  Menu items                                        50
-  Missing quantity values                        5,475
+```python
+state["shared_data"]["unified_demand_path"]
 
 ### 4.2 Core entity keys
 

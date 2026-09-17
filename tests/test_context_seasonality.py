@@ -31,6 +31,13 @@ from agents.context_seasonality.signals import (
     build_sku_signals,
 )
 
+from agents.context_seasonality.agent import (
+    context_seasonality_agent,
+)
+
+from agents.context_seasonality.data_loader import (
+    load_unified_data,
+)
 
 # ============================================================
 # 1. INPUT CONTRACT
@@ -579,3 +586,85 @@ def test_missing_required_feature_column_raises_error():
         )
 
     assert raised
+
+def test_context_agent_requires_data_analyst_path():
+
+    state = {
+        "request": {
+            "restaurant_scope": "single",
+            "restaurant_id": "R01",
+            "menu_item_id": "M01",
+        },
+
+        "required_capabilities": [
+            "promotion_analysis"
+        ],
+
+        "agent_results": {},
+
+        "shared_data": {},
+    }
+
+    try:
+
+        context_seasonality_agent(
+            state
+        )
+
+        raised = False
+
+    except ValueError as exc:
+
+        raised = True
+
+        assert (
+            "unified_demand_path"
+            in str(exc)
+        )
+
+    assert raised
+
+def test_load_unified_data_from_shared_path(
+    tmp_path
+):
+
+    path = (
+        tmp_path
+        / "unified_demand.csv"
+    )
+
+    df = pd.DataFrame(
+        {
+            "date": ["2026-01-01"],
+            "restaurant_id": ["R01"],
+            "menu_item_id": ["M01"],
+            "category": ["Burgers"],
+            "quantity": [20],
+            "day_of_week_num": [3],
+            "month": [1],
+            "avg_temp_f": [50.0],
+            "precip_inches": [0.0],
+            "is_holiday": [0],
+            "is_special_event": [0],
+            "is_promotion": [0],
+        }
+    )
+
+    df.to_csv(
+        path,
+        index=False
+    )
+
+    loaded = load_unified_data(
+        str(path)
+    )
+
+    assert len(loaded) == 1
+
+    assert (
+        loaded.loc[
+            0,
+            "restaurant_id"
+        ]
+        == "R01"
+    )
