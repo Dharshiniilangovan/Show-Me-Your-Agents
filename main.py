@@ -1,12 +1,29 @@
-import pandas as pd
+# ============================================================
+# main.py
+# ============================================================
 
-from agents.orchestrator.agent import (
-    OrchestratorAgent
+import pandas as pd
+from pathlib import Path
+
+from agents.orchestrator.agent import OrchestratorAgent
+
+from agents.data_analyst.agent import DataAnalystAgent
+
+from agents.context_seasonality.agent import (
+    ContextSeasonalityAgent
+)
+
+from agents.customer_pattern.agent import (
+    agent as customer_pattern_agent
 )
 
 
 # ============================================================
-# DATASET
+# DATASET PATH
+# ============================================================
+#
+# Change ONLY this path if your CSV is somewhere else.
+#
 # ============================================================
 
 DATASET_PATH = (
@@ -16,71 +33,163 @@ DATASET_PATH = (
 )
 
 
-print(
-    "\nLoading QSR demand dataset..."
+# ============================================================
+# DATA ANALYST PROCESSED OUTPUT
+# ============================================================
+
+DATA_ANALYST_OUTPUT_PATH = (
+    Path(__file__).resolve().parent
+    / "data"
+    / "processed"
+    / "unified_demand.csv"
+)
+# ============================================================
+# CONTEXT / SEASONALITY OUTPUT DIRECTORY
+# ============================================================
+
+CONTEXT_OUTPUT_DIR = (
+    Path(__file__).resolve().parent
+    / "data"
+    / "outputs"
 )
 
-df = pd.read_csv(
-    DATASET_PATH
-)
+
+# ============================================================
+# LOAD DATASET
+# ============================================================
+
+print("\nLoading QSR demand dataset...")
+
+df = pd.read_csv(DATASET_PATH)
 
 print(
-    f"Dataset loaded: "
+    f"Dataset loaded successfully: "
     f"{len(df):,} rows"
 )
 
 
 # ============================================================
-# DATASET LOOKUPS
+# VALIDATE IMPORTANT COLUMNS
 # ============================================================
 
-restaurant_lookup = (
-    df[
-        [
-            "restaurant_id",
-            "restaurant_name"
-        ]
-    ]
-    .drop_duplicates()
-)
+required_columns = [
+    "date",
+    "restaurant_id",
+    "menu_item_id",
+    "quantity"
+]
+
+missing_columns = [
+    column
+    for column in required_columns
+    if column not in df.columns
+]
+
+if missing_columns:
+
+    raise ValueError(
+        "Dataset is missing required columns: "
+        + ", ".join(missing_columns)
+    )
 
 
-menu_lookup = (
-    df[
-        [
-            "menu_item_id",
-            "menu_item_name"
+# ============================================================
+# CREATE RESTAURANT LOOKUP
+# ============================================================
+
+if "restaurant_name" in df.columns:
+
+    restaurant_lookup = (
+        df[
+            [
+                "restaurant_id",
+                "restaurant_name"
+            ]
         ]
-    ]
-    .drop_duplicates()
-)
+        .drop_duplicates()
+        .reset_index(drop=True)
+    )
+
+else:
+
+    restaurant_lookup = (
+        df[
+            [
+                "restaurant_id"
+            ]
+        ]
+        .drop_duplicates()
+        .reset_index(drop=True)
+    )
+
+
+# ============================================================
+# CREATE MENU ITEM LOOKUP
+# ============================================================
+
+if "menu_item_name" in df.columns:
+
+    menu_lookup = (
+        df[
+            [
+                "menu_item_id",
+                "menu_item_name"
+            ]
+        ]
+        .drop_duplicates()
+        .reset_index(drop=True)
+    )
+
+else:
+
+    menu_lookup = (
+        df[
+            [
+                "menu_item_id"
+            ]
+        ]
+        .drop_duplicates()
+        .reset_index(drop=True)
+    )
 
 
 # ============================================================
 # RESOLVE RESTAURANT
 # ============================================================
 
-def resolve_restaurant(
-    request
-):
+def resolve_restaurant(request):
+    """
+    Convert restaurant ID/name from the orchestrator request
+    into the restaurant ID used by the dataset.
 
-    restaurant_id = (
-        request.get(
-            "restaurant_id"
-        )
+    Returns None when the request is for all restaurants.
+    """
+
+    restaurant_scope = request.get(
+        "restaurant_scope"
     )
 
-    restaurant_name = (
-        request.get(
-            "restaurant_name"
-        )
+    restaurant_id = request.get(
+        "restaurant_id"
+    )
+
+    restaurant_name = request.get(
+        "restaurant_name"
     )
 
     # --------------------------------------------------------
-    # ID PROVIDED
+    # ALL RESTAURANTS
     # --------------------------------------------------------
 
-    if restaurant_id:
+    if restaurant_scope == "all":
+
+        return None
+
+    # --------------------------------------------------------
+    # RESTAURANT ID PROVIDED
+    # --------------------------------------------------------
+
+    if restaurant_id is not None:
 
         match = restaurant_lookup[
             restaurant_lookup[
@@ -89,37 +198,35 @@ def resolve_restaurant(
             .astype(str)
             .str.lower()
             ==
-            str(
-                restaurant_id
-            ).lower()
+            str(restaurant_id)
+            .strip()
+            .lower()
         ]
 
         if not match.empty:
 
-            row = match.iloc[0]
-
-            return (
-                row[
-                    "restaurant_id"
-                ],
-
-                row[
-                    "restaurant_name"
-                ]
-            )
+            return match.iloc[0][
+                "restaurant_id"
+            ]
 
         raise ValueError(
-            f'I couldn\'t find restaurant '
-            f'ID "{restaurant_id}". '
-            "Please provide another restaurant "
-            "ID, name, or number."
+            f"Restaurant ID "
+            f"'{restaurant_id}' "
+            f"was not found in the dataset."
         )
 
     # --------------------------------------------------------
-    # NAME PROVIDED
+    # RESTAURANT NAME PROVIDED
     # --------------------------------------------------------
 
-    if restaurant_name:
+    if (
+        restaurant_name is not None
+        and
+        "restaurant_name"
+        in restaurant_lookup.columns
+    ):
+
+        # Exact match first
 
         match = restaurant_lookup[
             restaurant_lookup[
@@ -128,63 +235,87 @@ def resolve_restaurant(
             .astype(str)
             .str.lower()
             ==
-            str(
-                restaurant_name
-            ).lower()
+            str(restaurant_name)
+            .strip()
+            .lower()
         ]
 
         if not match.empty:
 
-            row = match.iloc[0]
+            return match.iloc[0][
+                "restaurant_id"
+            ]
 
-            return (
-                row[
-                    "restaurant_id"
-                ],
+        # Partial match
 
-                row[
+        match = restaurant_lookup[
+            restaurant_lookup[
+                "restaurant_name"
+            ]
+            .astype(str)
+            .str.lower()
+            .str.contains(
+                str(restaurant_name)
+                .strip()
+                .lower(),
+                regex=False,
+                na=False
+            )
+        ]
+
+        if len(match) == 1:
+
+            return match.iloc[0][
+                "restaurant_id"
+            ]
+
+        if len(match) > 1:
+
+            names = (
+                match[
                     "restaurant_name"
                 ]
+                .astype(str)
+                .tolist()
+            )
+
+            raise ValueError(
+                "Multiple restaurants matched: "
+                + ", ".join(names)
             )
 
         raise ValueError(
-            f'I couldn\'t find '
-            f'"{restaurant_name}". '
-            "Please provide another restaurant "
-            "ID, name, or number."
+            f"Restaurant "
+            f"'{restaurant_name}' "
+            f"was not found in the dataset."
         )
 
-    raise ValueError(
-        "Please provide a restaurant ID, "
-        "restaurant name, or restaurant number."
-    )
+    return None
 
 
 # ============================================================
 # RESOLVE MENU ITEM
 # ============================================================
 
-def resolve_menu_item(
-    request
-):
+def resolve_menu_item(request):
+    """
+    Convert menu item ID/name into the menu_item_id
+    used by the dataset.
+    """
 
-    menu_item_id = (
-        request.get(
-            "menu_item_id"
-        )
+    menu_item_id = request.get(
+        "menu_item_id"
     )
 
-    menu_item_name = (
-        request.get(
-            "menu_item_name"
-        )
+    menu_item_name = request.get(
+        "menu_item_name"
     )
 
     # --------------------------------------------------------
-    # ID PROVIDED
+    # MENU ITEM ID
     # --------------------------------------------------------
 
-    if menu_item_id:
+    if menu_item_id is not None:
 
         match = menu_lookup[
             menu_lookup[
@@ -193,37 +324,35 @@ def resolve_menu_item(
             .astype(str)
             .str.lower()
             ==
-            str(
-                menu_item_id
-            ).lower()
+            str(menu_item_id)
+            .strip()
+            .lower()
         ]
 
         if not match.empty:
 
-            row = match.iloc[0]
-
-            return (
-                row[
-                    "menu_item_id"
-                ],
-
-                row[
-                    "menu_item_name"
-                ]
-            )
+            return match.iloc[0][
+                "menu_item_id"
+            ]
 
         raise ValueError(
-            f'I couldn\'t find menu item '
-            f'ID "{menu_item_id}". '
-            "Please provide another menu item "
-            "ID, name, or number."
+            f"Menu item ID "
+            f"'{menu_item_id}' "
+            f"was not found in the dataset."
         )
 
     # --------------------------------------------------------
-    # NAME PROVIDED
+    # MENU ITEM NAME
     # --------------------------------------------------------
 
-    if menu_item_name:
+    if (
+        menu_item_name is not None
+        and
+        "menu_item_name"
+        in menu_lookup.columns
+    ):
+
+        # Exact match
 
         match = menu_lookup[
             menu_lookup[
@@ -232,61 +361,123 @@ def resolve_menu_item(
             .astype(str)
             .str.lower()
             ==
-            str(
-                menu_item_name
-            ).lower()
+            str(menu_item_name)
+            .strip()
+            .lower()
         ]
 
         if not match.empty:
 
-            row = match.iloc[0]
+            return match.iloc[0][
+                "menu_item_id"
+            ]
 
-            return (
-                row[
-                    "menu_item_id"
-                ],
+        # Partial match
 
-                row[
+        match = menu_lookup[
+            menu_lookup[
+                "menu_item_name"
+            ]
+            .astype(str)
+            .str.lower()
+            .str.contains(
+                str(menu_item_name)
+                .strip()
+                .lower(),
+                regex=False,
+                na=False
+            )
+        ]
+
+        if len(match) == 1:
+
+            return match.iloc[0][
+                "menu_item_id"
+            ]
+
+        if len(match) > 1:
+
+            names = (
+                match[
                     "menu_item_name"
                 ]
+                .astype(str)
+                .tolist()
+            )
+
+            raise ValueError(
+                "Multiple menu items matched: "
+                + ", ".join(names)
             )
 
         raise ValueError(
-            f'I couldn\'t find menu item '
-            f'"{menu_item_name}". '
-            "Please provide another menu item "
-            "ID, name, or number."
+            f"Menu item "
+            f"'{menu_item_name}' "
+            f"was not found in the dataset."
         )
 
-    raise ValueError(
-        "Please provide a menu item ID, "
-        "menu item name, or item number."
-    )
+    return None
 
 
 # ============================================================
-# HELPERS
+# FILTER DATA FOR REQUEST
 # ============================================================
 
-def has_capability(
-    state,
-    capability
-):
-
-    return (
-        capability
-        in state.get(
-            "required_capabilities",
-            []
-        )
-    )
-
-
-def has_menu_item(
+def filter_data_for_request(
+    data,
     request
 ):
+    """
+    Filter Data Analyst output according to the restaurant
+    and menu item selected by the user.
 
-    return (
+    The original Data Analyst output remains unchanged.
+    """
+
+    filtered = data.copy()
+
+    restaurant_scope = request.get(
+        "restaurant_scope"
+    )
+
+    # --------------------------------------------------------
+    # RESTAURANT FILTER
+    # --------------------------------------------------------
+
+    if restaurant_scope != "all":
+
+        restaurant_id = (
+            resolve_restaurant(
+                request
+            )
+        )
+
+        if restaurant_id is not None:
+
+            filtered = filtered[
+                filtered[
+                    "restaurant_id"
+                ]
+                .astype(str)
+                ==
+                str(restaurant_id)
+            ]
+
+            # Store resolved ID so downstream agents use it
+
+            request[
+                "restaurant_id"
+            ] = restaurant_id
+
+            request[
+                "restaurant_scope"
+            ] = "single"
+
+    # --------------------------------------------------------
+    # MENU ITEM FILTER
+    # --------------------------------------------------------
+
+    if (
         request.get(
             "menu_item_id"
         )
@@ -298,1044 +489,929 @@ def has_menu_item(
             "menu_item_name"
         )
         is not None
-    )
+    ):
 
-
-# ============================================================
-# DUMMY DATA ANALYST
-# ============================================================
-
-def dummy_data_analyst(
-    state
-):
-
-    request = (
-        state[
-            "request"
-        ]
-    )
-
-    # ========================================================
-    # GET RESTAURANT SCOPE
-    # ========================================================
-
-    restaurant_scope = (
-        request.get(
-            "restaurant_scope"
-        )
-    )
-
-    # ========================================================
-    # ALL RESTAURANTS
-    # ========================================================
-
-    if restaurant_scope == "all":
-
-        # ----------------------------------------------------
-        # STOCKOUT WITHOUT MENU ITEM
-        #
-        # This case will eventually require an all-restaurant
-        # inventory strategy. For now we keep it separate.
-        # ----------------------------------------------------
-
-        if (
-            has_capability(
-                state,
-                "stockout_analysis"
-            )
-
-            and
-
-            not has_menu_item(
-                request
-            )
-        ):
-
-            raise ValueError(
-                "All-restaurant stockout analysis "
-                "is not implemented in the dummy "
-                "agent yet."
-            )
-
-        # ----------------------------------------------------
-        # RESOLVE MENU ITEM
-        # ----------------------------------------------------
-
-        menu_item_id, menu_item_name = (
+        menu_item_id = (
             resolve_menu_item(
                 request
             )
         )
 
-        # ----------------------------------------------------
-        # GET THIS ITEM ACROSS ALL RESTAURANTS
-        # ----------------------------------------------------
+        if menu_item_id is not None:
 
-        item_data = (
-            df[
-                df[
+            filtered = filtered[
+                filtered[
                     "menu_item_id"
-                ]
-                == menu_item_id
-            ]
-        )
-
-        if item_data.empty:
-
-            raise ValueError(
-                f"I couldn't find records for "
-                f"{menu_item_name} across "
-                f"all restaurants."
-            )
-
-        # ----------------------------------------------------
-        # OVERALL STATISTICS
-        # ----------------------------------------------------
-
-        average_quantity = (
-            item_data[
-                "quantity"
-            ].mean()
-        )
-
-        total_quantity = (
-            item_data[
-                "quantity"
-            ].sum()
-        )
-
-        # ----------------------------------------------------
-        # RESTAURANT-BY-RESTAURANT BREAKDOWN
-        # ----------------------------------------------------
-
-        restaurant_breakdown = (
-            item_data
-            .groupby(
-                [
-                    "restaurant_id",
-                    "restaurant_name"
-                ],
-                as_index=False
-            )
-            .agg(
-                avg_daily_sales=(
-                    "quantity",
-                    "mean"
-                ),
-
-                total_historical_quantity=(
-                    "quantity",
-                    "sum"
-                )
-            )
-        )
-
-        breakdown = []
-
-        for _, row in (
-            restaurant_breakdown
-            .iterrows()
-        ):
-
-            breakdown.append({
-
-                "restaurant_id":
-                    row[
-                        "restaurant_id"
-                    ],
-
-                "restaurant_name":
-                    row[
-                        "restaurant_name"
-                    ],
-
-                "avg_daily_sales":
-                    round(
-                        float(
-                            row[
-                                "avg_daily_sales"
-                            ]
-                        ),
-                        2
-                    ),
-
-                "total_historical_quantity":
-                    int(
-                        row[
-                            "total_historical_quantity"
-                        ]
-                    )
-            })
-
-        # ----------------------------------------------------
-        # RETURN ALL-RESTAURANT RESULT
-        # ----------------------------------------------------
-
-        return {
-
-            "restaurant_scope":
-                "all",
-
-            "menu_item_id":
-                menu_item_id,
-
-            "menu_item_name":
-                menu_item_name,
-
-            "avg_daily_sales":
-                round(
-                    float(
-                        average_quantity
-                    ),
-                    2
-                ),
-
-            "total_historical_quantity":
-                int(
-                    total_quantity
-                ),
-
-            "restaurant_breakdown":
-                breakdown,
-
-            # There is no single inventory value
-            # for all restaurants.
-            "current_stock":
-                None
-        }
-
-    # ========================================================
-    # SINGLE RESTAURANT
-    # ========================================================
-
-    restaurant_id, restaurant_name = (
-        resolve_restaurant(
-            request
-        )
-    )
-
-    # ========================================================
-    # RESTAURANT-WIDE STOCKOUT ANALYSIS
-    # ========================================================
-
-    if (
-        has_capability(
-            state,
-            "stockout_analysis"
-        )
-
-        and
-
-        not has_menu_item(
-            request
-        )
-    ):
-
-        restaurant_data = (
-            df[
-                df[
-                    "restaurant_id"
-                ]
-                == restaurant_id
-            ]
-        )
-
-        items = (
-            restaurant_data[
-                [
-                    "menu_item_id",
-                    "menu_item_name"
-                ]
-            ]
-            .drop_duplicates()
-            .head(10)
-            .reset_index(
-                drop=True
-            )
-        )
-        holiday_name = (
-    request.get(
-        "holiday_name"
-    )
-)
-
-    if holiday_name:
-
-        if "holiday_name" not in item_data.columns:
-
-            raise ValueError(
-                "Holiday information is not "
-                "available in the dataset."
-            )
-
-        item_data = (
-            item_data[
-                item_data[
-                    "holiday_name"
                 ]
                 .astype(str)
-                .str.lower()
                 ==
-                str(
-                    holiday_name
-                ).lower()
+                str(menu_item_id)
             ]
-        )
 
-        # ----------------------------------------------------
-        # Temporary dummy inventory
-        # ----------------------------------------------------
+            request[
+                "menu_item_id"
+            ] = menu_item_id
 
-        dummy_stock = [
-            500,
-            150,
-            100,
-            600,
-            80,
-            220,
-            350,
-            90,
-            410,
-            175
-        ]
+    # --------------------------------------------------------
+    # CHECK RESULT
+    # --------------------------------------------------------
 
-        output_items = []
-
-        for (
-            index,
-            row
-        ) in items.iterrows():
-
-            output_items.append({
-
-                "menu_item_id":
-                    row[
-                        "menu_item_id"
-                    ],
-
-                "menu_item_name":
-                    row[
-                        "menu_item_name"
-                    ],
-
-                "current_stock":
-                    dummy_stock[
-                        index
-                        % len(
-                            dummy_stock
-                        )
-                    ]
-            })
-
-        return {
-
-            "restaurant_scope":
-                "single",
-
-            "restaurant_id":
-                restaurant_id,
-
-            "restaurant_name":
-                restaurant_name,
-
-            "items":
-                output_items
-        }
-
-    # ========================================================
-    # SINGLE MENU ITEM + SINGLE RESTAURANT
-    # ========================================================
-
-    menu_item_id, menu_item_name = (
-        resolve_menu_item(
-            request
-        )
-    )
-
-    item_data = (
-        df[
-            (
-                df[
-                    "restaurant_id"
-                ]
-                == restaurant_id
-            )
-            &
-            (
-                df[
-                    "menu_item_id"
-                ]
-                == menu_item_id
-            )
-        ]
-    )
-
-    if item_data.empty:
+    if filtered.empty:
 
         raise ValueError(
-            f"I couldn't find records for "
-            f"{menu_item_name} at "
-            f"{restaurant_name}."
+            "No data was found for the "
+            "selected restaurant/menu item."
         )
 
-    average_quantity = (
-        item_data[
-            "quantity"
-        ].mean()
-    )
+    return filtered
 
-    total_quantity = (
-        item_data[
-            "quantity"
-        ].sum()
-    )
 
-    return {
-
-        "restaurant_scope":
-            "single",
-
-        "restaurant_id":
-            restaurant_id,
-
-        "restaurant_name":
-            restaurant_name,
-
-        "menu_item_id":
-            menu_item_id,
-
-        "menu_item_name":
-            menu_item_name,
-
-        "avg_daily_sales":
-            round(
-                float(
-                    average_quantity
-                ),
-                2
-            ),
-
-        "total_historical_quantity":
-            int(
-                total_quantity
-            ),
-
-        # Temporary simulated inventory
-        "current_stock":
-            500
-    }
 # ============================================================
-# DUMMY CONTEXT / SEASONALITY AGENT
+# GET DATA ANALYST OUTPUT
 # ============================================================
 
-def dummy_seasonality(state):
+def get_data_analyst_output(state):
+    """
+    Retrieve the dataframe produced by Data Analyst.
+    """
+
+    results = state.get(
+        "agent_results",
+        {}
+    )
+    # --------------------------------------------------------
+# SHARE UNIFIED DATA LOCATION WITH OTHER AGENTS
+# --------------------------------------------------------
+
+    state.setdefault(
+        "shared_data",
+        {}
+    )
+
+    state["shared_data"]["unified_demand_path"] = str(
+        DATA_ANALYST_OUTPUT_PATH
+    )
+
+    print(
+        "[INTEGRATION] Unified data available at:",
+        state["shared_data"]["unified_demand_path"]
+    )
+
+    data_result = results.get(
+        "data_analyst"
+    )
+
+    if data_result is None:
+
+        raise ValueError(
+            "Data Analyst Agent must run "
+            "before this agent."
+        )
+
+    data = data_result.get(
+        "data"
+    )
+
+    if data is None:
+
+        raise ValueError(
+            "Data Analyst Agent did not "
+            "return processed data."
+        )
+
+    return data
+
+
+# ============================================================
+# REAL DATA ANALYST AGENT WRAPPER
+# ============================================================
+
+def run_data_analyst(state):
+
+    print(
+        "[INTEGRATION] "
+        "Starting Data Analyst Agent..."
+    )
+
+    # --------------------------------------------------------
+    # PRINT PARAMETERS RECEIVED FROM ORCHESTRATOR
+    # --------------------------------------------------------
+
+    print("\n[DEBUG] Parameters received by Data Analyst:")
+    print(state["request"])
+
+    # --------------------------------------------------------
+    # RUN THE REAL DATA ANALYST AGENT
+    # --------------------------------------------------------
+
+    data_agent = DataAnalystAgent(
+        demand_path=DATASET_PATH,
+        inventory_path=None
+    )
+
+        # Make sure data/processed exists
+    DATA_ANALYST_OUTPUT_PATH.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    # Run Data Analyst AND save the complete processed dataset
+    result = data_agent.run(
+        str(DATA_ANALYST_OUTPUT_PATH)
+    )
+
+    # --------------------------------------------------------
+    # GET PROCESSED DATAFRAME
+    # --------------------------------------------------------
+
+    data = result.get("data")
+
+    # Get request extracted by orchestrator
+    request = state["request"]
+
+    # --------------------------------------------------------
+    # APPLY RESTAURANT / MENU ITEM SCOPE
+    # --------------------------------------------------------
+
+    if data is not None:
+
+        filtered_data = filter_data_for_request(
+            data,
+            request
+        )
+
+        # Replace full dataframe with requested subset
+        result["data"] = filtered_data
+
+        # ----------------------------------------------------
+        # UPDATE SUMMARY TO MATCH FILTERED DATA
+        # ----------------------------------------------------
+
+        summary = result.get(
+            "summary",
+            {}
+        )
+
+        summary["rows"] = len(
+            filtered_data
+        )
+
+        summary["restaurants"] = (
+            filtered_data[
+                "restaurant_id"
+            ].nunique()
+        )
+
+        summary["menu_items"] = (
+            filtered_data[
+                "menu_item_id"
+            ].nunique()
+        )
+
+        if "date" in filtered_data.columns:
+
+            summary["date_min"] = str(
+                filtered_data[
+                    "date"
+                ].min()
+            )
+
+            summary["date_max"] = str(
+                filtered_data[
+                    "date"
+                ].max()
+            )
+
+        result["summary"] = summary
+
+    # --------------------------------------------------------
+    # COMPLETE
+    # --------------------------------------------------------
+
+    print(
+        "[INTEGRATION] "
+        "Data Analyst Agent completed."
+    )
+
+    return result
+
+
+# ============================================================
+# REAL CONTEXT / SEASONALITY AGENT WRAPPER
+# ============================================================
+
+def run_context_seasonality(state):
+
+    print(
+        "[INTEGRATION] "
+        "Starting Context / Seasonality Agent..."
+    )
+
+    # --------------------------------------------------------
+    # GET DATA ANALYST OUTPUT
+    # --------------------------------------------------------
+
+    data = get_data_analyst_output(state)
 
     request = state["request"]
 
-    required_capabilities = (
-        state.get(
-            "required_capabilities",
-            []
-        )
+    required_capabilities = state.get(
+        "required_capabilities",
+        []
     )
 
-    # ========================================================
-    # COMPLETE DUMMY CONTEXT RESULT
-    # ========================================================
+    print(
+        "[DEBUG] Context request:",
+        request
+    )
 
-    all_signals = {
+    print(
+        "[DEBUG] Context capabilities:",
+        required_capabilities
+    )
 
-        "weekend": {
-            "uplift_pct": 20.86,
-            "active_count": 520,
-            "baseline_count": 1302,
-            "signal_level": "restaurant_sku",
-            "confidence": "high"
-        },
+    # --------------------------------------------------------
+    # FILTER DATA FOR USER REQUEST
+    # --------------------------------------------------------
 
-        "holiday": {
-            "uplift_pct": 18.76,
-            "active_count": 61,
-            "baseline_count": 1761,
-            "signal_level": "restaurant_sku",
-            "confidence": "medium"
-        },
+    filtered_data = filter_data_for_request(
+        data,
+        request
+    )
 
-        "event": {
-            "uplift_pct": 78.76,
-            "active_count": 55,
-            "baseline_count": 1767,
-            "signal_level": "restaurant_sku",
-            "confidence": "medium"
-        },
+    print(
+        "[INTEGRATION] "
+        f"Context analysis using "
+        f"{len(filtered_data):,} rows."
+    )
 
-        "promotion": {
-            "uplift_pct": 27.13,
-            "active_count": 283,
-            "baseline_count": 26997,
-            "signal_level": "sku",
-            "confidence": "high"
-        },
+    # --------------------------------------------------------
+    # RUN REAL CONTEXT / SEASONALITY AGENT
+    # --------------------------------------------------------
+    #
+    # The agent performs the calculations and generates:
+    #
+    # promotion_impact.csv
+    # holiday_impact.csv
+    # event_impact.csv
+    # seasonality_weekday.csv
+    # seasonality_month.csv
+    # seasonality_quarter.csv
+    # seasonality_week_of_year.csv
+    # sku_context_signals.csv
+    #
+    # --------------------------------------------------------
 
-        "precipitation": {
-            "uplift_pct": -5.66,
-            "active_count": 628,
-            "baseline_count": 1194,
-            "signal_level": "restaurant_sku",
-            "confidence": "high"
-        }
-    }
+    seasonality_agent = ContextSeasonalityAgent()
 
-    # ========================================================
-    # MAP CAPABILITY -> RELEVANT SIGNAL
-    # ========================================================
+    raw_result = seasonality_agent.run(
+        filtered_data
+    )
 
-    capability_signal_map = {
+    # --------------------------------------------------------
+    # HELPER
+    # Convert numpy/pandas values to normal Python values
+    # --------------------------------------------------------
 
-        "promotion_analysis":
-            "promotion",
+    def clean_value(value):
 
-        "holiday_analysis":
-            "holiday",
+        if pd.isna(value):
+            return None
 
-        "event_analysis":
-            "event"
-    }
+        if hasattr(value, "item"):
+            try:
+                return value.item()
+            except Exception:
+                pass
 
-    # ========================================================
-    # FILTER SIGNALS
-    # ========================================================
+        return value
 
-    filtered_signals = {}
+    # --------------------------------------------------------
+    # PROMOTION ANALYSIS
+    # --------------------------------------------------------
 
-    for capability in required_capabilities:
+    if "promotion_analysis" in required_capabilities:
 
-        signal_name = (
-            capability_signal_map.get(
-                capability
+        promotion_file = (
+            CONTEXT_OUTPUT_DIR
+            / "promotion_impact.csv"
+        )
+
+        if not promotion_file.exists():
+
+            raise FileNotFoundError(
+                f"Promotion output not found: "
+                f"{promotion_file}"
             )
+
+        promotion_df = pd.read_csv(
+            promotion_file
         )
 
-        if (
-            signal_name is not None
-            and
-            signal_name in all_signals
-        ):
+        # Get promotion-active row
+        active = promotion_df[
+            promotion_df["is_promotion"] == 1
+        ]
 
-            filtered_signals[
-                signal_name
-            ] = all_signals[
-                signal_name
-            ]
+        if active.empty:
 
-    # ========================================================
-    # GENERAL SEASONALITY REQUEST
-    #
-    # If the user asks for general seasonality rather than
-    # one specific context, return the complete context.
-    # ========================================================
+            return {
+                "analysis_type": "promotion_analysis",
+                "restaurant_id": request.get(
+                    "restaurant_id"
+                ),
+                "menu_item_id": request.get(
+                    "menu_item_id"
+                ),
+                "message": (
+                    "No promotion observations "
+                    "were available for this request."
+                )
+            }
 
-    if (
-        "seasonality_analysis"
-        in required_capabilities
-    ):
+        row = active.iloc[0]
 
-        filtered_signals = (
-            all_signals
-        )
+        return {
+            "analysis_type": "promotion_analysis",
 
-    # ========================================================
-    # FALLBACK
-    #
-    # Useful if the Context Agent is executed as a dependency
-    # of another agent such as Demand Forecasting.
-    #
-    # In that situation the user's final capability may be
-    # demand_forecasting, so there may be no direct
-    # context-specific capability in required_capabilities.
-    #
-    # The forecasting agent can receive the complete context.
-    # ========================================================
-
-    if not filtered_signals:
-
-        filtered_signals = (
-            all_signals
-        )
-
-    # ========================================================
-    # RETURN
-    # ========================================================
-
-    return {
-
-        "restaurant_id":
-            request.get(
+            "restaurant_id": request.get(
                 "restaurant_id"
             ),
 
-        "menu_item_id":
-            request.get(
+            "menu_item_id": request.get(
                 "menu_item_id"
             ),
 
-        "category":
-            "Burgers",
+            "promotion": {
+                "mean_demand": clean_value(
+                    row.get("mean")
+                ),
 
-        "baseline_demand":
-            19.84,
+                "median_demand": clean_value(
+                    row.get("median")
+                ),
 
-        "signals":
-            filtered_signals
-    }
+                "active_count": clean_value(
+                    row.get("count")
+                ),
 
-# ============================================================
-# DUMMY CUSTOMER PATTERN AGENT
-# ============================================================
+                "baseline_demand": clean_value(
+                    row.get("baseline_mean")
+                ),
 
-def dummy_customer_pattern(
-    state
-):
+                "baseline_count": clean_value(
+                    row.get("baseline_count")
+                ),
 
-    return {
+                "uplift_pct": clean_value(
+                    row.get("uplift_pct")
+                ),
 
-        "customer_demand_trend":
-            "increasing",
+                "interpretation": clean_value(
+                    row.get("interpretation")
+                )
+            }
+        }
 
-        "pattern_strength":
-            0.82
-    }
+    # --------------------------------------------------------
+    # HOLIDAY ANALYSIS
+    # --------------------------------------------------------
 
+    if "holiday_analysis" in required_capabilities:
 
-# ============================================================
-# DUMMY DEMAND FORECASTING AGENT
-# ============================================================
-
-def dummy_forecasting(
-    state
-):
-
-    request = (
-        state[
-            "request"
-        ]
-    )
-
-    data_result = (
-        state[
-            "agent_results"
-        ].get(
-            "data_analyst",
-            {}
-        )
-    )
-
-    # ========================================================
-    # MULTI-ITEM FORECAST FOR STOCKOUT ANALYSIS
-    # ========================================================
-
-    if (
-        has_capability(
-            state,
-            "stockout_analysis"
+        holiday_file = (
+            CONTEXT_OUTPUT_DIR
+            / "holiday_impact.csv"
         )
 
-        and
+        if not holiday_file.exists():
 
-        not has_menu_item(
-            request
-        )
-    ):
-
-        forecasts = []
-
-        restaurant_id = (
-            data_result.get(
-                "restaurant_id"
+            raise FileNotFoundError(
+                f"Holiday output not found: "
+                f"{holiday_file}"
             )
+
+        holiday_df = pd.read_csv(
+            holiday_file
         )
 
-        for item in (
-            data_result.get(
-                "items",
-                []
-            )
-        ):
+        holiday_name = request.get(
+            "holiday_name"
+        )
 
-            menu_item_id = (
-                item[
-                    "menu_item_id"
+        # ----------------------------------------------------
+        # SPECIFIC HOLIDAY
+        # Example: Christmas
+        # ----------------------------------------------------
+
+        if holiday_name:
+
+            matches = holiday_df[
+                holiday_df[
+                    "holiday_name"
                 ]
-            )
+                .astype(str)
+                .str.contains(
+                    str(holiday_name),
+                    case=False,
+                    na=False,
+                    regex=False
+                )
+            ]
 
-            historical = df[
-                (
-                    df[
+            if matches.empty:
+
+                return {
+                    "analysis_type": "holiday_analysis",
+                    "restaurant_id": request.get(
                         "restaurant_id"
-                    ]
-                    == restaurant_id
-                )
-                &
-                (
-                    df[
+                    ),
+                    "menu_item_id": request.get(
                         "menu_item_id"
-                    ]
-                    == menu_item_id
-                )
-            ]
-
-            average = (
-                historical[
-                    "quantity"
-                ].mean()
-            )
-
-            # Temporary 7-day forecast.
-            predicted = (
-                average
-                * 7
-            )
-
-            forecasts.append({
-
-                "menu_item_id":
-                    menu_item_id,
-
-                "predicted_demand":
-                    round(
-                        float(
-                            predicted
-                        )
+                    ),
+                    "holiday_name": holiday_name,
+                    "message": (
+                        "No historical observations "
+                        "were found for this holiday."
                     )
-            })
+                }
 
-        return {
+            row = matches.iloc[0]
 
-            "item_forecasts":
-                forecasts,
+            return {
+                "analysis_type": "holiday_analysis",
 
-            "forecast_horizon":
-                7
-        }
-
-    # ========================================================
-    # SINGLE ITEM FORECAST
-    # ========================================================
-
-    horizon = (
-        request.get(
-            "forecast_horizon"
-        )
-        or 7
-    )
-
-    average = (
-        data_result.get(
-            "avg_daily_sales",
-            0
-        )
-    )
-
-    predicted = (
-        average
-        * horizon
-    )
-
-    return {
-
-        "restaurant_id":
-            data_result.get(
-                "restaurant_id"
-            ),
-
-        "restaurant_name":
-            data_result.get(
-                "restaurant_name"
-            ),
-
-        "menu_item_id":
-            data_result.get(
-                "menu_item_id"
-            ),
-
-        "menu_item_name":
-            data_result.get(
-                "menu_item_name"
-            ),
-
-        "predicted_demand":
-            round(
-                float(
-                    predicted
-                )
-            ),
-
-        "forecast_horizon":
-            horizon,
-
-        "confidence":
-            0.87
-    }
-
-
-# ============================================================
-# DUMMY INVENTORY DECISION AGENT
-# ============================================================
-
-def dummy_inventory(
-    state
-):
-
-    request = (
-        state[
-            "request"
-        ]
-    )
-
-    data_result = (
-        state[
-            "agent_results"
-        ].get(
-            "data_analyst",
-            {}
-        )
-    )
-
-    forecast_result = (
-        state[
-            "agent_results"
-        ].get(
-            "demand_forecasting",
-            {}
-        )
-    )
-
-    # ========================================================
-    # MULTI-ITEM STOCKOUT ANALYSIS
-    # ========================================================
-
-    if (
-        has_capability(
-            state,
-            "stockout_analysis"
-        )
-
-        and
-
-        not has_menu_item(
-            request
-        )
-    ):
-
-        forecast_lookup = {
-
-            item[
-                "menu_item_id"
-            ]:
-                item[
-                    "predicted_demand"
-                ]
-
-            for item in (
-                forecast_result.get(
-                    "item_forecasts",
-                    []
-                )
-            )
-        }
-
-        risky_items = []
-
-        for item in (
-            data_result.get(
-                "items",
-                []
-            )
-        ):
-
-            item_id = (
-                item[
-                    "menu_item_id"
-                ]
-            )
-
-            stock = (
-                item[
-                    "current_stock"
-                ]
-            )
-
-            demand = (
-                forecast_lookup.get(
-                    item_id,
-                    0
-                )
-            )
-
-            shortage = (
-                demand
-                - stock
-            )
-
-            if shortage <= 0:
-
-                continue
-
-            ratio = (
-                shortage
-                / demand
-                if demand > 0
-                else 0
-            )
-
-            if ratio >= 0.5:
-
-                risk = "high"
-
-            elif ratio >= 0.25:
-
-                risk = "medium"
-
-            else:
-
-                risk = "low"
-
-            risky_items.append({
-
-                "menu_item_id":
-                    item_id,
-
-                "menu_item_name":
-                    item[
-                        "menu_item_name"
-                    ],
-
-                "current_stock":
-                    stock,
-
-                "predicted_demand":
-                    demand,
-
-                "shortage_quantity":
-                    shortage,
-
-                "stockout_risk":
-                    risk
-            })
-
-        return {
-
-            "analysis_type":
-                "multi_item_stockout",
-
-            "restaurant_id":
-                data_result.get(
+                "restaurant_id": request.get(
                     "restaurant_id"
                 ),
 
-            "restaurant_name":
-                data_result.get(
-                    "restaurant_name"
+                "menu_item_id": request.get(
+                    "menu_item_id"
                 ),
 
-            "number_of_items_at_risk":
-                len(
-                    risky_items
+                "holiday_name": clean_value(
+                    row.get("holiday_name")
                 ),
 
-            "stockout_items":
-                risky_items
-        }
+                "holiday": {
+                    "mean_demand": clean_value(
+                        row.get("mean")
+                    ),
 
-    # ========================================================
-    # SINGLE ITEM INVENTORY
-    # ========================================================
+                    "median_demand": clean_value(
+                        row.get("median")
+                    ),
 
-    predicted = (
-        forecast_result.get(
-            "predicted_demand",
-            0
-        )
-    )
+                    "active_count": clean_value(
+                        row.get("count")
+                    ),
 
-    current_stock = (
-        data_result.get(
-            "current_stock",
-            500
-        )
-    )
+                    "baseline_demand": clean_value(
+                        row.get("baseline_mean")
+                    ),
 
-    shortage = max(
-        predicted
-        - current_stock,
-        0
-    )
+                    "baseline_count": clean_value(
+                        row.get("baseline_count")
+                    ),
 
-    if predicted <= current_stock:
+                    "uplift_pct": clean_value(
+                        row.get("uplift_pct")
+                    ),
 
-        risk = "low"
+                    "interpretation": clean_value(
+                        row.get("interpretation")
+                    )
+                }
+            }
 
-    else:
+        # ----------------------------------------------------
+        # GENERAL HOLIDAY ANALYSIS
+        # ----------------------------------------------------
 
-        ratio = (
-            shortage
-            / predicted
-            if predicted > 0
-            else 0
-        )
+        holiday_records = []
 
-        if ratio >= 0.5:
+        for _, row in holiday_df.iterrows():
 
-            risk = "high"
+            if clean_value(
+                row.get("is_holiday")
+            ) != 1:
+                continue
 
-        elif ratio >= 0.25:
+            holiday_records.append(
+                {
+                    "holiday_name": clean_value(
+                        row.get("holiday_name")
+                    ),
 
-            risk = "medium"
+                    "mean_demand": clean_value(
+                        row.get("mean")
+                    ),
 
-        else:
+                    "median_demand": clean_value(
+                        row.get("median")
+                    ),
 
-            risk = "low"
+                    "active_count": clean_value(
+                        row.get("count")
+                    ),
 
-    return {
+                    "baseline_demand": clean_value(
+                        row.get("baseline_mean")
+                    ),
 
-        "analysis_type":
-            "single_item_inventory",
+                    "baseline_count": clean_value(
+                        row.get("baseline_count")
+                    ),
 
-        "restaurant_id":
-            forecast_result.get(
+                    "uplift_pct": clean_value(
+                        row.get("uplift_pct")
+                    ),
+
+                    "interpretation": clean_value(
+                        row.get("interpretation")
+                    )
+                }
+            )
+
+        return {
+            "analysis_type": "holiday_analysis",
+
+            "restaurant_id": request.get(
                 "restaurant_id"
             ),
 
-        "restaurant_name":
-            forecast_result.get(
-                "restaurant_name"
-            ),
-
-        "menu_item_id":
-            forecast_result.get(
+            "menu_item_id": request.get(
                 "menu_item_id"
             ),
 
-        "menu_item_name":
-            forecast_result.get(
-                "menu_item_name"
+            "holidays": holiday_records
+        }
+
+    # --------------------------------------------------------
+    # EVENT ANALYSIS
+    # --------------------------------------------------------
+
+    if "event_analysis" in required_capabilities:
+
+        event_file = (
+            CONTEXT_OUTPUT_DIR
+            / "event_impact.csv"
+        )
+
+        if not event_file.exists():
+
+            raise FileNotFoundError(
+                f"Event output not found: "
+                f"{event_file}"
+            )
+
+        event_df = pd.read_csv(
+            event_file
+        )
+
+        event_name = request.get(
+            "special_event_name"
+        )
+
+        # ----------------------------------------------------
+        # SPECIFIC EVENT
+        # ----------------------------------------------------
+
+        if event_name:
+
+            matches = event_df[
+                event_df[
+                    "special_event_name"
+                ]
+                .astype(str)
+                .str.contains(
+                    str(event_name),
+                    case=False,
+                    na=False,
+                    regex=False
+                )
+            ]
+
+            if matches.empty:
+
+                return {
+                    "analysis_type": "event_analysis",
+                    "restaurant_id": request.get(
+                        "restaurant_id"
+                    ),
+                    "menu_item_id": request.get(
+                        "menu_item_id"
+                    ),
+                    "special_event_name": event_name,
+                    "message": (
+                        "No historical observations "
+                        "were found for this event."
+                    )
+                }
+
+            row = matches.iloc[0]
+
+            return {
+                "analysis_type": "event_analysis",
+
+                "restaurant_id": request.get(
+                    "restaurant_id"
+                ),
+
+                "menu_item_id": request.get(
+                    "menu_item_id"
+                ),
+
+                "special_event_name": clean_value(
+                    row.get(
+                        "special_event_name"
+                    )
+                ),
+
+                "event": {
+                    "mean_demand": clean_value(
+                        row.get("mean")
+                    ),
+
+                    "median_demand": clean_value(
+                        row.get("median")
+                    ),
+
+                    "active_count": clean_value(
+                        row.get("count")
+                    ),
+
+                    "baseline_demand": clean_value(
+                        row.get("baseline_mean")
+                    ),
+
+                    "baseline_count": clean_value(
+                        row.get("baseline_count")
+                    ),
+
+                    "uplift_pct": clean_value(
+                        row.get("uplift_pct")
+                    ),
+
+                    "interpretation": clean_value(
+                        row.get("interpretation")
+                    )
+                }
+            }
+
+        # ----------------------------------------------------
+        # GENERAL EVENT ANALYSIS
+        # ----------------------------------------------------
+
+        event_records = []
+
+        for _, row in event_df.iterrows():
+
+            if clean_value(
+                row.get("is_special_event")
+            ) != 1:
+                continue
+
+            event_records.append(
+                {
+                    "special_event_name": clean_value(
+                        row.get(
+                            "special_event_name"
+                        )
+                    ),
+
+                    "mean_demand": clean_value(
+                        row.get("mean")
+                    ),
+
+                    "median_demand": clean_value(
+                        row.get("median")
+                    ),
+
+                    "active_count": clean_value(
+                        row.get("count")
+                    ),
+
+                    "baseline_demand": clean_value(
+                        row.get("baseline_mean")
+                    ),
+
+                    "baseline_count": clean_value(
+                        row.get("baseline_count")
+                    ),
+
+                    "uplift_pct": clean_value(
+                        row.get("uplift_pct")
+                    ),
+
+                    "interpretation": clean_value(
+                        row.get("interpretation")
+                    )
+                }
+            )
+
+        return {
+            "analysis_type": "event_analysis",
+
+            "restaurant_id": request.get(
+                "restaurant_id"
             ),
 
-        "current_stock":
-            current_stock,
+            "menu_item_id": request.get(
+                "menu_item_id"
+            ),
 
-        "predicted_demand":
-            predicted,
+            "events": event_records
+        }
 
-        "shortage_quantity":
-            shortage,
+    # --------------------------------------------------------
+    # SEASONALITY ANALYSIS
+    # --------------------------------------------------------
 
-        "recommended_order_quantity":
-            shortage,
+    if "seasonality_analysis" in required_capabilities:
 
-        "stockout_risk":
-            risk
-    }
+        seasonality_files = {
+            "weekday":
+                CONTEXT_OUTPUT_DIR
+                / "seasonality_weekday.csv",
+
+            "month":
+                CONTEXT_OUTPUT_DIR
+                / "seasonality_month.csv",
+
+            "quarter":
+                CONTEXT_OUTPUT_DIR
+                / "seasonality_quarter.csv",
+
+            "week_of_year":
+                CONTEXT_OUTPUT_DIR
+                / "seasonality_week_of_year.csv"
+        }
+
+        seasonality_result = {}
+
+        for dimension, file_path in (
+            seasonality_files.items()
+        ):
+
+            if not file_path.exists():
+                continue
+
+            seasonal_df = pd.read_csv(
+                file_path
+            )
+
+            records = []
+
+            for _, row in seasonal_df.iterrows():
+
+                record = {}
+
+                for column in seasonal_df.columns:
+
+                    record[column] = (
+                        clean_value(
+                            row[column]
+                        )
+                    )
+
+                records.append(
+                    record
+                )
+
+            seasonality_result[
+                dimension
+            ] = records
+
+        return {
+            "analysis_type":
+                "seasonality_analysis",
+
+            "restaurant_id":
+                request.get(
+                    "restaurant_id"
+                ),
+
+            "menu_item_id":
+                request.get(
+                    "menu_item_id"
+                ),
+
+            "seasonality":
+                seasonality_result
+        }
+
+    # --------------------------------------------------------
+    # FALLBACK
+    # --------------------------------------------------------
+    #
+    # If no specific Context capability was requested,
+    # return the Context Agent's original metadata.
+    #
+    # --------------------------------------------------------
+
+    return raw_result
+# ============================================================
+# REAL CUSTOMER PATTERN AGENT WRAPPER
+# ============================================================
+
+def run_customer_pattern(state):
+
+    print(
+        "[INTEGRATION] "
+        "Starting Customer Pattern Agent..."
+    )
+
+    # --------------------------------------------------------
+    # GET DATA FROM DATA ANALYST
+    # --------------------------------------------------------
+
+    data = (
+        get_data_analyst_output(
+            state
+        )
+    )
+
+    # --------------------------------------------------------
+    # GET REQUEST
+    # --------------------------------------------------------
+
+    request = state[
+        "request"
+    ]
+
+    # --------------------------------------------------------
+    # RESOLVE RESTAURANT
+    # --------------------------------------------------------
+
+    if (
+        request.get(
+            "restaurant_scope"
+        )
+        != "all"
+    ):
+
+        restaurant_id = (
+            resolve_restaurant(
+                request
+            )
+        )
+
+        if restaurant_id is not None:
+
+            request[
+                "restaurant_id"
+            ] = restaurant_id
+
+            request[
+                "restaurant_scope"
+            ] = "single"
+
+    # --------------------------------------------------------
+    # RESOLVE MENU ITEM
+    # --------------------------------------------------------
+
+    if (
+        request.get(
+            "menu_item_id"
+        )
+        is not None
+
+        or
+
+        request.get(
+            "menu_item_name"
+        )
+        is not None
+    ):
+
+        menu_item_id = (
+            resolve_menu_item(
+                request
+            )
+        )
+
+        request[
+            "menu_item_id"
+        ] = menu_item_id
+
+    # --------------------------------------------------------
+    # RUN REAL AGENT
+    # --------------------------------------------------------
+
+    result = (
+        customer_pattern_agent(
+            state,
+            data
+        )
+    )
+
+    print(
+        "[INTEGRATION] "
+        "Customer Pattern Agent completed."
+    )
+
+    return result
 
 
 # ============================================================
@@ -1348,19 +1424,24 @@ orchestrator = (
 
 
 # ============================================================
-# REGISTER AGENTS
+# REGISTER DATA ANALYST
 # ============================================================
 
 orchestrator.register_agent(
 
-    "data_analyst",
+    agent_name=
+        "data_analyst",
 
-    dummy_data_analyst,
+    agent_function=
+        run_data_analyst,
 
     capabilities=[
+
+        "data_retrieval",
+
         "historical_sales_analysis",
-        "recent_demand_analysis",
-        "data_retrieval"
+
+        "recent_demand_analysis"
     ],
 
     dependencies=[],
@@ -1371,83 +1452,33 @@ orchestrator.register_agent(
 )
 
 
+# ============================================================
+# REGISTER CONTEXT / SEASONALITY
+# ============================================================
+
 orchestrator.register_agent(
 
-    "context_seasonality",
+    agent_name=
+        "context_seasonality",
 
-    dummy_seasonality,
+    agent_function=
+        run_context_seasonality,
 
     capabilities=[
+
         "seasonality_analysis",
+
         "promotion_analysis",
+
         "holiday_analysis",
+
         "event_analysis"
     ],
 
-    dependencies=[],
-
-    required_user_inputs=[
-        "restaurant"
-    ]
-)
-
-
-orchestrator.register_agent(
-
-    "customer_pattern",
-
-    dummy_customer_pattern,
-
-    capabilities=[
-        "customer_pattern_analysis"
-    ],
-
-    dependencies=[],
-
-    required_user_inputs=[
-        "restaurant"
-    ]
-)
-
-
-orchestrator.register_agent(
-
-    "demand_forecasting",
-
-    dummy_forecasting,
-
-    capabilities=[
-        "demand_forecasting"
-    ],
+    # Context agent needs processed data first.
 
     dependencies=[
-        "historical_sales_analysis",
-        "seasonality_analysis",
-        "customer_pattern_analysis"
-    ],
-
-    required_user_inputs=[
-        "restaurant",
-        "menu_item",
-        "forecast_horizon"
-    ]
-)
-
-
-orchestrator.register_agent(
-
-    "inventory_decision",
-
-    dummy_inventory,
-
-    capabilities=[
-        "inventory_analysis",
-        "stockout_analysis",
-        "order_recommendation"
-    ],
-
-    dependencies=[
-        "demand_forecasting"
+        "data_retrieval"
     ],
 
     required_user_inputs=[
@@ -1457,192 +1488,178 @@ orchestrator.register_agent(
 
 
 # ============================================================
-# GENERIC RESULT DISPLAY
+# REGISTER CUSTOMER PATTERN
 # ============================================================
 
-def format_label(key):
+orchestrator.register_agent(
+
+    agent_name=
+        "customer_pattern",
+
+    agent_function=
+        run_customer_pattern,
+
+    capabilities=[
+        "customer_pattern_analysis"
+    ],
+
+    # Customer Pattern also needs Data Analyst output.
+
+    dependencies=[
+        "data_retrieval"
+    ],
+
+    required_user_inputs=[
+        "restaurant"
+    ]
+)
+
+
+# ============================================================
+# PRINT RESULT
+# ============================================================
+
+def print_result(response):
     """
-    Convert:
-        seasonal_factor
-    into:
-        Seasonal factor
+    Display orchestrator results without printing
+    the entire DataFrame.
     """
 
-    return (
-        str(key)
-        .replace("_", " ")
-        .strip()
-        .capitalize()
+    print(
+        "\n"
+        + "=" * 70
     )
 
-
-def display_dictionary(
-    data,
-    indent=0
-):
-    """
-    Generic dictionary display.
-
-    This allows results from ANY agent to be shown
-    without adding agent-specific print logic.
-    """
-
-    spacing = " " * indent
-
-    for key, value in data.items():
-
-        label = format_label(key)
-
-        # ----------------------------------------------------
-        # NESTED DICTIONARY
-        # ----------------------------------------------------
-
-        if isinstance(
-            value,
-            dict
-        ):
-
-            print(
-                f"{spacing}{label}:"
-            )
-
-            display_dictionary(
-                value,
-                indent + 4
-            )
-
-        # ----------------------------------------------------
-        # LIST
-        # ----------------------------------------------------
-
-        elif isinstance(
-            value,
-            list
-        ):
-
-            print(
-                f"{spacing}{label}:"
-            )
-
-            if not value:
-
-                print(
-                    f"{spacing}    None"
-                )
-
-                continue
-
-            for item in value:
-
-                if isinstance(
-                    item,
-                    dict
-                ):
-
-                    print(
-                        f"{spacing}    -"
-                    )
-
-                    display_dictionary(
-                        item,
-                        indent + 8
-                    )
-
-                else:
-
-                    print(
-                        f"{spacing}    - {item}"
-                    )
-
-        # ----------------------------------------------------
-        # NORMAL VALUE
-        # ----------------------------------------------------
-
-        else:
-
-            print(
-                f"{spacing}{label}: {value}"
-            )
-
-
-def display_agent_results(
-    response
-):
-    """
-    Display results from every agent that actually
-    participated in the workflow.
-
-    This prevents results from an agent being silently
-    ignored by main.py.
-    """
-
-    results = response.get(
-        "results",
-        {}
+    print(
+        "ORCHESTRATOR RESULT"
     )
+
+    print(
+        "=" * 70
+    )
+
+    # --------------------------------------------------------
+    # STATUS
+    # --------------------------------------------------------
+
+    print(
+        "\nStatus:",
+        response.get(
+            "status"
+        )
+    )
+
+    # --------------------------------------------------------
+    # GOAL
+    # --------------------------------------------------------
+
+    if response.get(
+        "goal"
+    ):
+
+        print(
+            "Goal:",
+            response.get(
+                "goal"
+            )
+        )
+
+    # --------------------------------------------------------
+    # WORKFLOW
+    # --------------------------------------------------------
 
     workflow = response.get(
         "workflow",
         []
     )
 
-    if not results:
+    if workflow:
 
         print(
-            "\nBot: The analysis completed, "
-            "but no agent returned a result."
+            "\nWorkflow:"
         )
 
-        return
+        for index, agent_name in enumerate(
+            workflow,
+            start=1
+        ):
 
-    print(
-        "\nBot: Analysis completed."
-    )
-
-    goal = response.get(
-        "goal"
-    )
-
-    if goal:
-
-        print(
-            f"\nGoal: {goal}"
-        )
-
-    # --------------------------------------------------------
-    # DISPLAY RESULTS IN WORKFLOW ORDER
-    # --------------------------------------------------------
-
-    displayed_agents = set()
-
-    for agent_name in workflow:
-
-        result = results.get(
-            agent_name
-        )
-
-        if result is None:
-
-            continue
-
-        displayed_agents.add(
-            agent_name
-        )
-
-        title = (
-            agent_name
-            .replace("_", " ")
-            .title()
-        )
-
-        print(
-            f"\n{title}:"
-        )
-
-        print(
-            "-" * len(
-                title
+            status = (
+                response
+                .get(
+                    "workflow_status",
+                    {}
+                )
+                .get(
+                    agent_name,
+                    "unknown"
+                )
             )
+
+            print(
+                f"  {index}. "
+                f"{agent_name} "
+                f"[{status}]"
+            )
+
+    # --------------------------------------------------------
+    # RESULTS
+    # --------------------------------------------------------
+
+    results = response.get(
+        "results",
+        {}
+    )
+
+    # DATA ANALYST
+
+    if "data_analyst" in results:
+
+        result = results[
+            "data_analyst"
+        ]
+
+        print(
+            "\n--- DATA ANALYST ---"
+        )
+
+        summary = result.get(
+            "summary",
+            {}
+        )
+
+        for key, value in summary.items():
+
+            # Avoid huge output
+
+            if key == "columns":
+
+                print(
+                    "columns:",
+                    ", ".join(
+                        map(
+                            str,
+                            value
+                        )
+                    )
+                )
+
+            else:
+
+                print(
+                    f"{key}: {value}"
+                )
+
+    # CONTEXT / SEASONALITY
+
+    if "context_seasonality" in results:
+
+        result = results[
+            "context_seasonality"
+        ]
+
+        print(
+            "\n--- CONTEXT / SEASONALITY ---"
         )
 
         if isinstance(
@@ -1650,10 +1667,40 @@ def display_agent_results(
             dict
         ):
 
-            display_dictionary(
-                result,
-                indent=0
+            for key, value in result.items():
+
+                print(
+                    f"{key}: {value}"
+                )
+
+        else:
+
+            print(
+                result
             )
+
+    # CUSTOMER PATTERN
+
+    if "customer_pattern" in results:
+
+        result = results[
+            "customer_pattern"
+        ]
+
+        print(
+            "\n--- CUSTOMER PATTERN ---"
+        )
+
+        if isinstance(
+            result,
+            dict
+        ):
+
+            for key, value in result.items():
+
+                print(
+                    f"{key}: {value}"
+                )
 
         else:
 
@@ -1662,171 +1709,170 @@ def display_agent_results(
             )
 
     # --------------------------------------------------------
-    # SAFETY CHECK
-    #
-    # If an agent returned something but for some reason
-    # wasn't in workflow, still show it.
+    # ERRORS
     # --------------------------------------------------------
 
-    for (
-        agent_name,
-        result
-    ) in results.items():
+    errors = response.get(
+        "errors",
+        []
+    )
 
-        if (
-            agent_name
-            in displayed_agents
-        ):
-
-            continue
-
-        title = (
-            agent_name
-            .replace("_", " ")
-            .title()
-        )
+    if errors:
 
         print(
-            f"\n{title}:"
+            "\n--- ERRORS ---"
         )
 
-        print(
-            "-" * len(
-                title
-            )
-        )
-
-        if isinstance(
-            result,
-            dict
-        ):
-
-            display_dictionary(
-                result
-            )
-
-        else:
+        for error in errors:
 
             print(
-                result
+                error
             )
+
+    print()
 
 
 # ============================================================
 # CHATBOT
 # ============================================================
 
-print()
+def start_chatbot():
 
-print(
-    "=" * 65
-)
-
-print(
-    "             DEMAND FORECASTING ASSISTANT"
-)
-
-print(
-    "=" * 65
-)
-
-print(
-    "\nYou can use restaurant/menu item IDs, "
-    "names, or simple numbers."
-)
-
-print(
-    "\nType 'exit' to stop.\n"
-)
-
-
-# ============================================================
-# CHAT LOOP
-# ============================================================
-
-while True:
-
-    user_input = input(
-        "You: "
-    ).strip()
-
-    # --------------------------------------------------------
-    # EXIT
-    # --------------------------------------------------------
-
-    if user_input.lower() in [
-        "exit",
-        "quit",
-        "bye"
-    ]:
-
-        print(
-            "\nBot: Goodbye!"
-        )
-
-        break
-
-    if not user_input:
-
-        continue
-
-    # --------------------------------------------------------
-    # SEND QUERY TO ORCHESTRATOR
-    # --------------------------------------------------------
-
-    response = (
-        orchestrator
-        .process_request(
-            user_input
-        )
+    print(
+        "\n"
+        + "=" * 70
     )
 
-    status = response.get(
-        "status"
+    print(
+        "        MULTI-AGENT DEMAND FORECASTING SYSTEM"
     )
 
-    # --------------------------------------------------------
-    # CONVERSATIONAL FOLLOW-UP
-    # --------------------------------------------------------
+    print(
+        "=" * 70
+    )
 
-    if status in [
-        "clarification_required",
-        "missing_parameters",
-        "needs_user_input",
-        "unsupported_request"
-    ]:
+    print(
+        "\nAvailable real agents:"
+    )
 
-        print(
-            "\nBot:",
-            response.get(
-                "message"
+    print(
+        "  1. Data Analyst Agent"
+    )
+
+    print(
+        "  2. Context / Seasonality Agent"
+    )
+
+    print(
+        "  3. Customer Pattern Agent"
+    )
+
+    print(
+        "\nThe Orchestrator will automatically "
+        "select the required agents."
+    )
+
+    print(
+        "\nType 'exit' to stop.\n"
+    )
+
+    # ========================================================
+    # CONVERSATION LOOP
+    # ========================================================
+
+    while True:
+
+        user_query = input(
+            "You: "
+        ).strip()
+
+        # ----------------------------------------------------
+        # EMPTY QUERY
+        # ----------------------------------------------------
+
+        if not user_query:
+
+            continue
+
+        # ----------------------------------------------------
+        # EXIT
+        # ----------------------------------------------------
+
+        if user_query.lower() in [
+            "exit",
+            "quit",
+            "bye"
+        ]:
+
+            print(
+                "\nBot: Goodbye!"
             )
+
+            break
+
+        # ----------------------------------------------------
+        # SEND QUERY TO ORCHESTRATOR
+        # ----------------------------------------------------
+
+        try:
+
+            response = (
+                orchestrator
+                .process_request(
+                    user_query
+                )
+            )
+
+        except Exception as error:
+
+            print(
+                "\nBot: Unexpected error:"
+            )
+
+            print(
+                error
+            )
+
+            continue
+
+        # ----------------------------------------------------
+        # CLARIFICATION
+        # ----------------------------------------------------
+
+        status = response.get(
+            "status"
         )
 
-        print()
+        if status in [
+            "clarification_required",
+            "missing_parameters",
+            "unsupported_request"
+        ]:
 
-        continue
+            print(
+                "\nBot:",
+                response.get(
+                    "message"
+                )
+            )
 
-    # --------------------------------------------------------
-    # INTERNAL FAILURE
-    # --------------------------------------------------------
+            print()
 
-    if status == "completed_with_errors":
+            continue
 
-        print(
-            "\nBot: I couldn't complete the "
-            "analysis because one of the required "
-            "agents encountered a problem."
+        # ----------------------------------------------------
+        # COMPLETED
+        # ----------------------------------------------------
+
+        print_result(
+            response
         )
 
-        continue
 
-    # --------------------------------------------------------
-    # DISPLAY ALL AGENT RESULTS
-    # --------------------------------------------------------
+# ============================================================
+# RUN APPLICATION
+# ============================================================
 
-    display_agent_results(
-        response
-    )
+if __name__ == "__main__":
 
-    print()
+    start_chatbot()

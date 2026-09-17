@@ -1,5 +1,5 @@
 from pathlib import Path
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 RAW = ROOT / 'data' / 'raw' / 'qsr_demand_dataset.csv'
 PROCESSED = ROOT / 'data' / 'processed'
 OUTPUTS = ROOT / 'data' / 'outputs'
