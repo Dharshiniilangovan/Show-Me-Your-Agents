@@ -17,6 +17,7 @@ from agents.customer_pattern.agent import (
     agent as customer_pattern_agent
 )
 
+from agents.demand_forecast.agent import DemandForecastingAgent
 
 # ============================================================
 # DATASET PATH
@@ -579,8 +580,8 @@ def run_data_analyst(state):
     # PRINT PARAMETERS RECEIVED FROM ORCHESTRATOR
     # --------------------------------------------------------
 
-    print("\n[DEBUG] Parameters received by Data Analyst:")
-    print(state["request"])
+    # print("\n[DEBUG] Parameters received by Data Analyst:")
+    # print(state["request"])
 
     # --------------------------------------------------------
     # RUN THE REAL DATA ANALYST AGENT
@@ -610,12 +611,12 @@ def run_data_analyst(state):
         "unified_demand_path"
     ] = str(DATA_ANALYST_OUTPUT_PATH)
 
-    print(
-        "[SHARED CONTEXT] Unified demand:",
-        state["shared_context"]["data"][
-            "unified_demand_path"
-        ]
-    )
+    # print(
+    #     "[SHARED CONTEXT] Unified demand:",
+    #     state["shared_context"]["data"][
+    #         "unified_demand_path"
+    #     ]
+    # )
 
     # --------------------------------------------------------
     # GET PROCESSED DATAFRAME
@@ -717,13 +718,13 @@ def run_context_seasonality(state):
         []
     )
 
-    print(
-        "[DEBUG] Context request:",
-        request
-    )
+    # print(
+    #     "[DEBUG] Context request:",
+    #     request
+    # )
 
     print(
-        "[DEBUG] Context capabilities:",
+        "[ORCHESTRATOR] Context capabilities:",
         required_capabilities
     )
 
@@ -736,11 +737,11 @@ def run_context_seasonality(state):
         request
     )
 
-    print(
-        "[INTEGRATION] "
-        f"Context analysis using "
-        f"{len(filtered_data):,} rows."
-    )
+    # print(
+    #     "[INTEGRATION] "
+    #     f"Context analysis using "
+    #     f"{len(filtered_data):,} rows."
+    # )
 
     # --------------------------------------------------------
     # RUN REAL CONTEXT / SEASONALITY AGENT
@@ -794,10 +795,10 @@ def run_context_seasonality(state):
         / "agent_context.json"
     )
 
-    print(
-        "[SHARED CONTEXT] "
-        "Context / Seasonality outputs registered."
-    )
+    # print(
+    #     "[SHARED CONTEXT] "
+    #     "Context / Seasonality outputs registered."
+    # )
 
     # --------------------------------------------------------
     # HELPER
@@ -1459,6 +1460,180 @@ def run_customer_pattern(state):
 
 
 # ============================================================
+# REAL DEMAND FORECASTING AGENT WRAPPER
+# ============================================================
+
+def run_demand_forecasting(state):
+
+    print(
+        "[INTEGRATION] "
+        "Starting Demand Forecasting Agent..."
+    )
+
+    # --------------------------------------------------------
+    # GET SHARED CONTEXT
+    # --------------------------------------------------------
+
+    shared_context = state.get(
+        "shared_context",
+        {}
+    )
+
+    # --------------------------------------------------------
+    # CHECK DATA ANALYST OUTPUT
+    # --------------------------------------------------------
+
+    shared_data = shared_context.get(
+        "data",
+        {}
+    )
+
+    unified_path = shared_data.get(
+        "unified_demand_path"
+    )
+
+    if not unified_path:
+
+        raise ValueError(
+            "Demand Forecasting Agent requires "
+            "unified_demand_path from Data Analyst."
+        )
+
+    # print(
+    #     "[DEMAND FORECAST] Unified demand:",
+    #     unified_path
+    # )
+
+    # --------------------------------------------------------
+    # CHECK CONTEXT / SEASONALITY OUTPUT
+    # --------------------------------------------------------
+
+    context_data = shared_context.get(
+        "context",
+        {}
+    )
+
+    if context_data:
+
+        print(
+            "[DEMAND FORECAST] "
+            "Context / Seasonality output available."
+        )
+
+    # --------------------------------------------------------
+    # CHECK CUSTOMER PATTERN OUTPUT
+    # --------------------------------------------------------
+
+    customer_pattern = shared_context.get(
+        "customer_pattern",
+        {}
+    )
+
+    if customer_pattern:
+
+        print(
+            "[DEMAND FORECAST] "
+            "Customer Pattern output available."
+        )
+
+    # --------------------------------------------------------
+    # FORECAST HORIZON
+    # --------------------------------------------------------
+
+    request = state.get(
+        "request",
+        {}
+    )
+
+    forecast_horizon = int(
+        request.get(
+            "forecast_horizon"
+        )
+        or 7
+    )
+
+    request[
+        "forecast_horizon"
+    ] = forecast_horizon
+
+    print(
+        "[DEMAND FORECAST] "
+        "Forecast horizon:",
+        forecast_horizon,
+        "days"
+    )
+
+    # --------------------------------------------------------
+    # RUN REAL DEMAND FORECASTING AGENT
+    # --------------------------------------------------------
+
+    forecasting_agent = (
+        DemandForecastingAgent()
+    )
+
+    result = forecasting_agent.run(
+        state
+    )
+
+    # --------------------------------------------------------
+    # REGISTER FORECAST IN SHARED CONTEXT
+    # --------------------------------------------------------
+
+    state[
+        "shared_context"
+    ].setdefault(
+        "forecast",
+        {}
+    )
+
+    state[
+        "shared_context"
+    ][
+        "forecast"
+    ].update(
+        {
+            "output_path":
+                result.get(
+                    "output_path"
+                ),
+
+            "forecast_horizon":
+                result.get(
+                    "forecast_horizon"
+                ),
+
+            "forecast_start":
+                result.get(
+                    "forecast_start"
+                ),
+
+            "forecast_end":
+                result.get(
+                    "forecast_end"
+                ),
+
+            "evaluation":
+                result.get(
+                    "evaluation",
+                    {}
+                )
+        }
+    )
+
+    print(
+        "[SHARED CONTEXT] "
+        "Demand forecast registered."
+    )
+
+    print(
+        "[INTEGRATION] "
+        "Demand Forecasting Agent completed."
+    )
+
+    return result
+
+
+# ============================================================
 # CREATE ORCHESTRATOR
 # ============================================================
 
@@ -1558,6 +1733,40 @@ orchestrator.register_agent(
     ]
 )
 
+# ============================================================
+# REGISTER DEMAND FORECASTING
+# ============================================================
+
+orchestrator.register_agent(
+
+    agent_name=
+        "demand_forecasting",
+
+    agent_function=
+        run_demand_forecasting,
+
+    capabilities=[
+
+        "demand_forecasting",
+
+        "future_demand_forecasting",
+
+        "demand_prediction"
+    ],
+
+    dependencies=[
+
+        "data_retrieval",
+
+        "seasonality_analysis",
+
+        "customer_pattern_analysis"
+    ],
+
+    required_user_inputs=[
+        "restaurant"
+    ]
+)
 
 # ============================================================
 # PRINT RESULT
@@ -1672,29 +1881,32 @@ def print_result(response):
             {}
         )
 
-        for key, value in summary.items():
+        # for key, value in summary.items():
 
-            # Avoid huge output
+        #     # Avoid huge output
 
-            if key == "columns":
+        #     if key == "columns":
 
-                print(
-                    "columns:",
-                    ", ".join(
-                        map(
-                            str,
-                            value
-                        )
-                    )
-                )
+        #         print(
+        #             "columns:",
+        #             ", ".join(
+        #                 map(
+        #                     str,
+        #                     value
+        #                 )
+        #             )
+        #         )
 
-            else:
+        #     else:
 
-                print(
-                    f"{key}: {value}"
-                )
+        #         print(
+        #             f"{key}: {value}"
+        #         )
 
     # CONTEXT / SEASONALITY
+    # ========================================================
+    # CONTEXT / SEASONALITY
+    # ========================================================
 
     if "context_seasonality" in results:
 
@@ -1706,21 +1918,412 @@ def print_result(response):
             "\n--- CONTEXT / SEASONALITY ---"
         )
 
-        if isinstance(
-            result,
-            dict
-        ):
+        analysis_type = result.get(
+            "analysis_type"
+        )
 
-            for key, value in result.items():
+        # ====================================================
+        # PROMOTION ANALYSIS
+        # ====================================================
+
+        if analysis_type == "promotion_analysis":
+
+            promotion = result.get(
+                "promotion",
+                {}
+            )
+
+            mean_demand = promotion.get(
+                "mean_demand"
+            )
+
+            baseline = promotion.get(
+                "baseline_demand"
+            )
+
+            uplift = promotion.get(
+                "uplift_pct"
+            )
+
+            if mean_demand is not None:
 
                 print(
-                    f"{key}: {value}"
+                    "Promotion Mean Demand:",
+                    round(
+                        float(mean_demand),
+                        2
+                    )
                 )
+
+            if baseline is not None:
+
+                print(
+                    "Baseline Mean Demand:",
+                    round(
+                        float(baseline),
+                        2
+                    )
+                )
+
+            if uplift is not None:
+
+                print(
+                    "Demand Uplift:",
+                    f"{float(uplift):.2f}%"
+                )
+
+        # ====================================================
+        # SPECIFIC HOLIDAY
+        # ====================================================
+
+        elif (
+            analysis_type == "holiday_analysis"
+            and result.get("holiday")
+        ):
+
+            holiday = result.get(
+                "holiday",
+                {}
+            )
+
+            holiday_name = result.get(
+                "holiday_name"
+            )
+
+            if holiday_name:
+
+                print(
+                    "Holiday:",
+                    holiday_name
+                )
+
+            mean_demand = holiday.get(
+                "mean_demand"
+            )
+
+            baseline = holiday.get(
+                "baseline_demand"
+            )
+
+            uplift = holiday.get(
+                "uplift_pct"
+            )
+
+            if mean_demand is not None:
+
+                print(
+                    "Mean Demand:",
+                    round(
+                        float(mean_demand),
+                        2
+                    )
+                )
+
+            if baseline is not None:
+
+                print(
+                    "Baseline Mean Demand:",
+                    round(
+                        float(baseline),
+                        2
+                    )
+                )
+
+            if uplift is not None:
+
+                print(
+                    "Demand Uplift:",
+                    f"{float(uplift):.2f}%"
+                )
+
+        # ====================================================
+        # GENERAL HOLIDAY ANALYSIS
+        # ====================================================
+
+        elif (
+            analysis_type == "holiday_analysis"
+            and result.get("holidays")
+        ):
+
+            holidays = result.get(
+                "holidays",
+                []
+            )
+
+            for holiday in holidays:
+
+                name = holiday.get(
+                    "holiday_name"
+                )
+
+                mean_demand = holiday.get(
+                    "mean_demand"
+                )
+
+                if (
+                    name is not None
+                    and mean_demand is not None
+                ):
+
+                    print(
+                        f"{name}: "
+                        f"{float(mean_demand):.2f}"
+                    )
+
+        # ====================================================
+        # SPECIFIC EVENT
+        # ====================================================
+
+        elif (
+            analysis_type == "event_analysis"
+            and result.get("event")
+        ):
+
+            event = result.get(
+                "event",
+                {}
+            )
+
+            event_name = result.get(
+                "special_event_name"
+            )
+
+            if event_name:
+
+                print(
+                    "Event:",
+                    event_name
+                )
+
+            mean_demand = event.get(
+                "mean_demand"
+            )
+
+            baseline = event.get(
+                "baseline_demand"
+            )
+
+            uplift = event.get(
+                "uplift_pct"
+            )
+
+            if mean_demand is not None:
+
+                print(
+                    "Mean Demand:",
+                    round(
+                        float(mean_demand),
+                        2
+                    )
+                )
+
+            if baseline is not None:
+
+                print(
+                    "Baseline Mean Demand:",
+                    round(
+                        float(baseline),
+                        2
+                    )
+                )
+
+            if uplift is not None:
+
+                print(
+                    "Demand Uplift:",
+                    f"{float(uplift):.2f}%"
+                )
+
+        # ====================================================
+        # GENERAL EVENT ANALYSIS
+        # ====================================================
+
+        elif (
+            analysis_type == "event_analysis"
+            and result.get("events")
+        ):
+
+            events = result.get(
+                "events",
+                []
+            )
+
+            for event in events:
+
+                name = event.get(
+                    "special_event_name"
+                )
+
+                mean_demand = event.get(
+                    "mean_demand"
+                )
+
+                if (
+                    name is not None
+                    and mean_demand is not None
+                ):
+
+                    print(
+                        f"{name}: "
+                        f"{float(mean_demand):.2f}"
+                    )
+
+        # ====================================================
+        # SEASONALITY
+        # ====================================================
+
+        elif analysis_type == "seasonality_analysis":
+
+            seasonality = result.get(
+                "seasonality",
+                {}
+            )
+
+            # ----------------------------------------------
+            # Weekday
+            # ----------------------------------------------
+
+            weekday_data = seasonality.get(
+                "weekday",
+                []
+            )
+
+            if weekday_data:
+
+                print(
+                    "\nWeekday Mean Demand:"
+                )
+
+                for row in weekday_data:
+
+                    # Find demand column
+                    mean_demand = (
+                        row.get("mean")
+                        or row.get("mean_demand")
+                    )
+
+                    # Find weekday column
+                    weekday = (
+                        row.get("day_of_week")
+                        or row.get(
+                            "day_of_week_num"
+                        )
+                    )
+
+                    if mean_demand is not None:
+
+                        print(
+                            f"  {weekday}: "
+                            f"{float(mean_demand):.2f}"
+                        )
+
+            # ----------------------------------------------
+            # Month
+            # ----------------------------------------------
+
+            month_data = seasonality.get(
+                "month",
+                []
+            )
+
+            if month_data:
+
+                print(
+                    "\nMonthly Mean Demand:"
+                )
+
+                for row in month_data:
+
+                    month = row.get(
+                        "month"
+                    )
+
+                    mean_demand = (
+                        row.get("mean")
+                        or row.get("mean_demand")
+                    )
+
+                    if mean_demand is not None:
+
+                        print(
+                            f"  Month {month}: "
+                            f"{float(mean_demand):.2f}"
+                        )
+
+            # ----------------------------------------------
+            # Quarter
+            # ----------------------------------------------
+
+            quarter_data = seasonality.get(
+                "quarter",
+                []
+            )
+
+            if quarter_data:
+
+                print(
+                    "\nQuarterly Mean Demand:"
+                )
+
+                for row in quarter_data:
+
+                    quarter = row.get(
+                        "quarter"
+                    )
+
+                    mean_demand = (
+                        row.get("mean")
+                        or row.get("mean_demand")
+                    )
+
+                    if mean_demand is not None:
+
+                        print(
+                            f"  Q{quarter}: "
+                            f"{float(mean_demand):.2f}"
+                        )
+
+            # ----------------------------------------------
+            # Week of year
+            # ----------------------------------------------
+
+            week_data = seasonality.get(
+                "week_of_year",
+                []
+            )
+
+            if week_data:
+
+                print(
+                    "\nWeekly Mean Demand:"
+                )
+
+                for row in week_data:
+
+                    week = row.get(
+                        "week_of_year"
+                    )
+
+                    mean_demand = (
+                        row.get("mean")
+                        or row.get("mean_demand")
+                    )
+
+                    if mean_demand is not None:
+
+                        print(
+                            f"  Week {week}: "
+                            f"{float(mean_demand):.2f}"
+                        )
+
+        # ====================================================
+        # FALLBACK
+        # ====================================================
 
         else:
 
             print(
-                result
+                "Context / seasonality analysis completed."
             )
 
     # CUSTOMER PATTERN
@@ -1752,6 +2355,146 @@ def print_result(response):
                 result
             )
 
+        # ========================================================
+    # DEMAND FORECASTING
+    # ========================================================
+
+    if "demand_forecasting" in results:
+
+        result = results[
+            "demand_forecasting"
+        ]
+
+        forecast = result.get(
+            "result",
+            {}
+        )
+
+        print(
+            "\n--- DEMAND FORECASTING ---"
+        )
+
+        # ----------------------------------------------------
+        # Restaurant
+        # ----------------------------------------------------
+
+        if forecast.get(
+            "restaurant_id"
+        ) is not None:
+
+            print(
+                "Restaurant:",
+                forecast[
+                    "restaurant_id"
+                ]
+            )
+
+        # ----------------------------------------------------
+        # Menu Item
+        # ----------------------------------------------------
+
+        if forecast.get(
+            "menu_item_id"
+        ) is not None:
+
+            print(
+                "Menu Item:",
+                forecast[
+                    "menu_item_id"
+                ]
+            )
+
+        # ----------------------------------------------------
+        # Specific Date
+        # ----------------------------------------------------
+
+        if forecast.get(
+            "date"
+        ) is not None:
+
+            print(
+                "Date:",
+                forecast[
+                    "date"
+                ]
+            )
+
+        # ----------------------------------------------------
+        # Total predicted demand
+        # ----------------------------------------------------
+
+        total_demand = forecast.get(
+            "total_predicted_demand"
+        )
+
+        if total_demand is not None:
+
+            print(
+                "\nTotal Predicted Demand:",
+                round(
+                    total_demand,
+                    2
+                )
+            )
+
+        # ----------------------------------------------------
+        # Display values read from demand_forecast.csv
+        # ----------------------------------------------------
+
+        daily_forecast = forecast.get(
+            "daily_forecast",
+            []
+        )
+
+        if daily_forecast:
+
+            print(
+                "\nForecast:"
+            )
+
+            for row in daily_forecast:
+
+                print(
+                    f"  {row['date']} : "
+                    f"{row['predicted_quantity']:.2f}"
+                )
+
+        # --------------------------------------------
+        # Evaluation metrics from historical backtest
+        # --------------------------------------------
+
+        evaluation = result.get(
+            "evaluation",
+            {}
+        )
+
+        if evaluation:
+
+            print(
+                "\nBacktest Evaluation:"
+            )
+
+            print(
+                "wMAPE:",
+                evaluation.get(
+                    "wmape_percent"
+                ),
+                "%"
+            )
+
+            print(
+                "MAE:",
+                evaluation.get(
+                    "mae"
+                )
+            )
+
+            print(
+                "RMSE:",
+                evaluation.get(
+                    "rmse"
+                )
+            )
     # --------------------------------------------------------
     # ERRORS
     # --------------------------------------------------------
@@ -1809,6 +2552,10 @@ def start_chatbot():
 
     print(
         "  3. Customer Pattern Agent"
+    )
+
+    print(
+        "  4. Demand Forecasting Agent"
     )
 
     print(

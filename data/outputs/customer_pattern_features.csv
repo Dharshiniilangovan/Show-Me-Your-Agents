@@ -1,0 +1,2 @@
+restaurant_id,menu_item_id,customer_demand_trend,pattern_strength
+R12,M01,stable,0.0948
