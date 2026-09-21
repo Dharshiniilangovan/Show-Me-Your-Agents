@@ -8,3 +8,4 @@ __pycache__/
 .pytest_cache/
 # Generated processed datasets
 data/processed/unified_demand.csv
+data/outputs/demand_forecast.csv

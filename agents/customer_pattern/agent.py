@@ -1,38 +1,46 @@
 # agents/customer_pattern/agent.py
 
-import pandas as pd
+from pathlib import Path
+
 import numpy as np
+import pandas as pd
 
 
 def agent(state, sales_data):
     """
     Customer Pattern Agent
 
-    Input:
-        state["request"]
-        state["agent_results"]  # optional
-        sales_data              # sales dataset for analysis
+    Calculates pattern strength for each:
+        restaurant_id x menu_item_id
 
-    Required request fields:
-        restaurant_scope
+    Pattern strength:
+        Absolute Pearson correlation between time and daily demand.
+
+        0 -> weak/no linear trend
+        1 -> strong linear trend
+
+    CSV Output:
+        data/outputs/customer_pattern_features.csv
+
+    CSV columns:
         restaurant_id
-        restaurant_name
         menu_item_id
-        menu_item_name
-        time_period
+        customer_demand_trend
+        pattern_strength
 
-    Output:
-        {
-            "customer_demand_trend": "...",
-            "pattern_strength": 0.82
-        }
+    Terminal:
+        If the user requests a specific restaurant/item,
+        only the matching pattern information is printed.
     """
 
-    # --------------------------------------------------
-    # 1. Read request from shared state
-    # --------------------------------------------------
+    # ============================================================
+    # 1. READ REQUEST
+    # ============================================================
 
-    request = state["request"]
+    request = state.get(
+        "request",
+        {}
+    )
 
     restaurant_scope = request.get(
         "restaurant_scope"
@@ -46,11 +54,14 @@ def agent(state, sales_data):
         "menu_item_id"
     )
 
-    # --------------------------------------------------
-    # 2. Convert sales data to DataFrame
-    # --------------------------------------------------
+    # ============================================================
+    # 2. CONVERT SALES DATA TO DATAFRAME
+    # ============================================================
 
-    if not isinstance(sales_data, pd.DataFrame):
+    if not isinstance(
+        sales_data,
+        pd.DataFrame
+    ):
 
         sales_data = pd.DataFrame(
             sales_data
@@ -58,9 +69,9 @@ def agent(state, sales_data):
 
     df = sales_data.copy()
 
-    # --------------------------------------------------
-    # 3. Find required columns
-    # --------------------------------------------------
+    # ============================================================
+    # 3. FIND REQUIRED COLUMNS
+    # ============================================================
 
     date_col = find_column(
         df,
@@ -101,27 +112,45 @@ def agent(state, sales_data):
         ]
     )
 
-    # --------------------------------------------------
-    # 4. Validate required columns
-    # --------------------------------------------------
+    # ============================================================
+    # 4. VALIDATE COLUMNS
+    # ============================================================
 
     if date_col is None:
 
         return {
-            "customer_demand_trend": "unknown",
-            "pattern_strength": 0.0
+            "status": "error",
+            "message": "Date column not found.",
+            "pattern_features": []
         }
 
     if quantity_col is None:
 
         return {
-            "customer_demand_trend": "unknown",
-            "pattern_strength": 0.0
+            "status": "error",
+            "message": "Quantity column not found.",
+            "pattern_features": []
         }
 
-    # --------------------------------------------------
-    # 5. Clean data
-    # --------------------------------------------------
+    if restaurant_col is None:
+
+        return {
+            "status": "error",
+            "message": "Restaurant column not found.",
+            "pattern_features": []
+        }
+
+    if item_col is None:
+
+        return {
+            "status": "error",
+            "message": "Menu item column not found.",
+            "pattern_features": []
+        }
+
+    # ============================================================
+    # 5. CLEAN DATA
+    # ============================================================
 
     df[date_col] = pd.to_datetime(
         df[date_col],
@@ -136,147 +165,451 @@ def agent(state, sales_data):
     df = df.dropna(
         subset=[
             date_col,
-            quantity_col
+            quantity_col,
+            restaurant_col,
+            item_col
         ]
     )
 
-    # --------------------------------------------------
-    # 6. Filter restaurant
-    # --------------------------------------------------
-
-    if (
-        restaurant_scope == "single"
-        and restaurant_id is not None
-        and restaurant_col is not None
-    ):
-
-        df = df[
-            df[restaurant_col].astype(str)
-            == str(restaurant_id)
-        ]
-
-    # --------------------------------------------------
-    # 7. Filter menu item
-    # --------------------------------------------------
-
-    if (
-        menu_item_id is not None
-        and item_col is not None
-    ):
-
-        df = df[
-            df[item_col].astype(str)
-            == str(menu_item_id)
-        ]
-
-    # --------------------------------------------------
-    # 8. Check data
-    # --------------------------------------------------
+    # Demand cannot be negative
+    df = df[
+        df[quantity_col] >= 0
+    ].copy()
 
     if df.empty:
 
         return {
-            "customer_demand_trend": "unknown",
-            "pattern_strength": 0.0
+            "status": "success",
+            "pattern_features": []
         }
 
-    # --------------------------------------------------
-    # 9. Aggregate demand by day
-    # --------------------------------------------------
+    # ============================================================
+    # 6. CALCULATE PATTERN STRENGTH FOR ALL RESTAURANT × ITEMS
+    #
+    # IMPORTANT:
+    # We calculate everything first so the CSV always contains
+    # the complete set of pattern features.
+    # ============================================================
 
-    daily_demand = (
-        df.groupby(
-            df[date_col].dt.date
-        )[quantity_col]
-        .sum()
-        .reset_index()
+    pattern_rows = []
+
+    grouped = df.groupby(
+        [
+            restaurant_col,
+            item_col
+        ],
+        sort=False
     )
 
-    daily_demand.columns = [
-        "date",
-        "quantity"
-    ]
+    for (
+        current_restaurant,
+        current_item
+    ), group in grouped:
 
-    daily_demand["date"] = pd.to_datetime(
-        daily_demand["date"]
+        # --------------------------------------------------------
+        # Aggregate demand by date
+        # --------------------------------------------------------
+
+        daily_demand = (
+            group.groupby(
+                group[
+                    date_col
+                ].dt.date
+            )[
+                quantity_col
+            ]
+            .sum()
+            .reset_index()
+        )
+
+        daily_demand.columns = [
+            "date",
+            "quantity"
+        ]
+
+        daily_demand["date"] = pd.to_datetime(
+            daily_demand["date"]
+        )
+
+        daily_demand = (
+            daily_demand
+            .sort_values(
+                "date"
+            )
+            .reset_index(
+                drop=True
+            )
+        )
+
+        # --------------------------------------------------------
+        # Trend
+        # --------------------------------------------------------
+
+        customer_demand_trend = (
+            calculate_trend(
+                daily_demand[
+                    "quantity"
+                ]
+            )
+        )
+
+        # --------------------------------------------------------
+        # Pattern strength
+        # --------------------------------------------------------
+
+        pattern_strength = (
+            calculate_pattern_strength(
+                daily_demand[
+                    "quantity"
+                ]
+            )
+        )
+
+        # --------------------------------------------------------
+        # Store feature
+        # --------------------------------------------------------
+
+        pattern_rows.append(
+            {
+                "restaurant_id":
+                    str(
+                        current_restaurant
+                    ),
+
+                "menu_item_id":
+                    str(
+                        current_item
+                    ),
+
+                "customer_demand_trend":
+                    customer_demand_trend,
+
+                "pattern_strength":
+                    round(
+                        float(
+                            pattern_strength
+                        ),
+                        4
+                    )
+            }
+        )
+
+    # ============================================================
+    # 7. CREATE COMPLETE PATTERN DATAFRAME
+    # ============================================================
+
+    pattern_df = pd.DataFrame(
+        pattern_rows
     )
 
-    daily_demand = daily_demand.sort_values(
-        "date"
+    if pattern_df.empty:
+
+        return {
+            "status": "success",
+            "pattern_features": []
+        }
+
+    # ============================================================
+    # 8. SAVE COMPLETE CSV
+    # ============================================================
+
+    output_dir = (
+        Path(__file__)
+        .resolve()
+        .parents[2]
+        / "data"
+        / "outputs"
     )
 
-    # --------------------------------------------------
-    # 10. Calculate demand trend
-    # --------------------------------------------------
-
-    customer_demand_trend = calculate_trend(
-        daily_demand["quantity"]
+    output_dir.mkdir(
+        parents=True,
+        exist_ok=True
     )
 
-    # --------------------------------------------------
-    # 11. Calculate pattern strength
-    # --------------------------------------------------
-
-    pattern_strength = calculate_pattern_strength(
-        daily_demand["quantity"]
+    output_path = (
+        output_dir
+        / "customer_pattern_features.csv"
     )
 
-    # --------------------------------------------------
-    # 12. Return contract-compatible output
-    # --------------------------------------------------
+    pattern_df.to_csv(
+        output_path,
+        index=False
+    )
+
+    # ============================================================
+    # 9. GET ONLY USER-REQUESTED RESULT FOR TERMINAL
+    # ============================================================
+
+    requested_pattern = (
+        pattern_df.copy()
+    )
+
+    # --------------------------------------------------------
+    # Restaurant filter
+    # --------------------------------------------------------
+
+    if (
+        restaurant_scope == "single"
+        and restaurant_id is not None
+    ):
+
+        requested_pattern = (
+            requested_pattern[
+                requested_pattern[
+                    "restaurant_id"
+                ].astype(str)
+                ==
+                str(
+                    restaurant_id
+                )
+            ]
+        )
+
+    # --------------------------------------------------------
+    # Menu-item filter
+    # --------------------------------------------------------
+
+    if menu_item_id is not None:
+
+        requested_pattern = (
+            requested_pattern[
+                requested_pattern[
+                    "menu_item_id"
+                ].astype(str)
+                ==
+                str(
+                    menu_item_id
+                )
+            ]
+        )
+
+    # ============================================================
+    # 10. TERMINAL OUTPUT
+    # ============================================================
+
+    print(
+        "\n--- CUSTOMER PATTERN ---"
+    )
+
+    # --------------------------------------------------------
+    # Restaurant + Item requested
+    # --------------------------------------------------------
+
+    if (
+        restaurant_id is not None
+        and menu_item_id is not None
+    ):
+
+        if requested_pattern.empty:
+
+            print(
+                "No customer pattern found for "
+                f"restaurant {restaurant_id}, "
+                f"item {menu_item_id}."
+            )
+
+        else:
+
+            row = (
+                requested_pattern
+                .iloc[0]
+            )
+
+            print(
+                "Restaurant:",
+                row[
+                    "restaurant_id"
+                ]
+            )
+
+            print(
+                "Menu Item:",
+                row[
+                    "menu_item_id"
+                ]
+            )
+
+            print(
+                "Demand Trend:",
+                row[
+                    "customer_demand_trend"
+                ]
+            )
+
+            print(
+                "Pattern Strength:",
+                round(
+                    float(
+                        row[
+                            "pattern_strength"
+                        ]
+                    ),
+                    4
+                )
+            )
+
+    # --------------------------------------------------------
+    # Only item requested
+    # --------------------------------------------------------
+
+    elif menu_item_id is not None:
+
+        if requested_pattern.empty:
+
+            print(
+                "No customer pattern found for "
+                f"item {menu_item_id}."
+            )
+
+        else:
+
+            print(
+                "Menu Item:",
+                menu_item_id
+            )
+
+            # If item exists in multiple restaurants,
+            # show one concise row per restaurant.
+
+            for _, row in (
+                requested_pattern
+                .iterrows()
+            ):
+
+                print(
+                    f"Restaurant "
+                    f"{row['restaurant_id']}: "
+                    f"Pattern Strength = "
+                    f"{float(row['pattern_strength']):.4f}, "
+                    f"Trend = "
+                    f"{row['customer_demand_trend']}"
+                )
+
+    # --------------------------------------------------------
+    # Only restaurant requested
+    # --------------------------------------------------------
+
+    elif (
+        restaurant_scope == "single"
+        and restaurant_id is not None
+    ):
+
+        print(
+            "Restaurant:",
+            restaurant_id
+        )
+
+        print(
+            "Pattern strengths calculated for",
+            len(
+                requested_pattern
+            ),
+            "menu items."
+        )
+
+        # Do not dump all items into terminal.
+
+    # --------------------------------------------------------
+    # All restaurants/items requested
+    # --------------------------------------------------------
+
+    else:
+
+        print(
+            "Pattern strengths calculated for",
+            len(
+                pattern_df
+            ),
+            "restaurant-item combinations."
+        )
+
+    # ============================================================
+    # 11. RETURN TO ORCHESTRATOR
+    # ============================================================
 
     return {
-        "customer_demand_trend":
-            customer_demand_trend,
+        "status":
+            "success",
 
-        "pattern_strength":
-            round(pattern_strength, 2)
+        # Full feature set for Demand Forecasting Agent
+        "pattern_features":
+            pattern_df.to_dict(
+                orient="records"
+            ),
+
+        # User-specific result
+        "result":
+            requested_pattern.to_dict(
+                orient="records"
+            )
     }
 
 
-# ======================================================
-# Helper Functions
-# ======================================================
+# ================================================================
+# HELPER: FIND COLUMN
+# ================================================================
 
-def find_column(df, possible_columns):
+def find_column(
+    df,
+    possible_columns
+):
 
     for column in possible_columns:
 
         if column in df.columns:
+
             return column
 
     return None
 
 
-def calculate_trend(quantity):
+# ================================================================
+# HELPER: CALCULATE TREND
+# ================================================================
 
-    # Need enough observations
-    if len(quantity) < 4:
+def calculate_trend(
+    quantity
+):
 
-        return "insufficient_data"
+    if len(
+        quantity
+    ) < 4:
+
+        return (
+            "insufficient_data"
+        )
 
     x = np.arange(
-        len(quantity)
+        len(
+            quantity
+        )
     )
 
-    y = quantity.to_numpy()
+    y = quantity.to_numpy(
+        dtype=float
+    )
 
+    # ------------------------------------------------------------
     # Linear regression slope
+    # ------------------------------------------------------------
+
     slope = np.polyfit(
         x,
         y,
         1
     )[0]
 
-    average = np.mean(y)
+    average = np.mean(
+        y
+    )
 
     if average == 0:
 
         return "stable"
 
-    # Normalize slope
     relative_slope = (
-        slope / average
+        slope
+        / average
     )
 
     if relative_slope > 0.01:
@@ -292,25 +625,59 @@ def calculate_trend(quantity):
         return "stable"
 
 
-def calculate_pattern_strength(quantity):
+# ================================================================
+# HELPER: CALCULATE PATTERN STRENGTH
+# ================================================================
 
-    if len(quantity) < 4:
+def calculate_pattern_strength(
+    quantity
+):
+
+    if len(
+        quantity
+    ) < 4:
 
         return 0.0
 
     x = np.arange(
-        len(quantity)
+        len(
+            quantity
+        )
     )
 
-    y = quantity.to_numpy()
+    y = quantity.to_numpy(
+        dtype=float
+    )
+
+    # ------------------------------------------------------------
+    # Constant demand has no measurable linear trend
+    # ------------------------------------------------------------
+
+    if np.std(
+        y
+    ) == 0:
+
+        return 0.0
+
+    # ------------------------------------------------------------
+    # Correlation between time and demand
+    # ------------------------------------------------------------
 
     correlation = np.corrcoef(
         x,
         y
     )[0, 1]
 
-    if np.isnan(correlation):
+    if np.isnan(
+        correlation
+    ):
 
         return 0.0
 
-    return abs(correlation)
+    # Direction is handled separately by calculate_trend().
+    # Pattern strength only represents strength.
+    return float(
+        abs(
+            correlation
+        )
+    )
