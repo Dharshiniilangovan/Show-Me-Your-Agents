@@ -18,6 +18,7 @@ from agents.customer_pattern.agent import (
 )
 
 from agents.demand_forecast.agent import DemandForecastingAgent
+from agents.inventory_decision.agent import InventoryDecisionAgent
 
 # ============================================================
 # DATASET PATH
@@ -429,99 +430,86 @@ def filter_data_for_request(
     request
 ):
     """
-    Filter Data Analyst output according to the restaurant
-    and menu item selected by the user.
+    Filter data for single, list, or explicitly paired restaurant/menu requests.
 
-    The original Data Analyst output remains unchanged.
+    If restaurant_item_pairs is present, pairing is preserved:
+    (R01,M02) + (R02,M03) means exactly those two combinations.
     """
 
     filtered = data.copy()
 
-    restaurant_scope = request.get(
-        "restaurant_scope"
-    )
+    pairs = request.get("restaurant_item_pairs") or []
 
-    # --------------------------------------------------------
-    # RESTAURANT FILTER
-    # --------------------------------------------------------
+    if pairs:
+        masks = []
 
-    if restaurant_scope != "all":
+        for pair in pairs:
+            restaurant_id = pair.get("restaurant_id")
+            menu_item_id = pair.get("menu_item_id")
 
-        restaurant_id = (
-            resolve_restaurant(
-                request
-            )
-        )
+            mask = pd.Series(True, index=filtered.index)
 
-        if restaurant_id is not None:
+            if restaurant_id is not None:
+                mask &= (
+                    filtered["restaurant_id"].astype(str)
+                    == str(restaurant_id)
+                )
 
+            if menu_item_id is not None:
+                mask &= (
+                    filtered["menu_item_id"].astype(str)
+                    == str(menu_item_id)
+                )
+
+            masks.append(mask)
+
+        if masks:
+            combined = masks[0].copy()
+            for mask in masks[1:]:
+                combined |= mask
+            filtered = filtered[combined]
+
+    else:
+        restaurant_ids = request.get("restaurant_ids") or []
+        menu_item_ids = request.get("menu_item_ids") or []
+
+        if restaurant_ids:
             filtered = filtered[
-                filtered[
-                    "restaurant_id"
-                ]
-                .astype(str)
-                ==
-                str(restaurant_id)
+                filtered["restaurant_id"].astype(str).isin(
+                    [str(value) for value in restaurant_ids]
+                )
             ]
+        elif request.get("restaurant_scope") != "all":
+            restaurant_id = resolve_restaurant(request)
+            if restaurant_id is not None:
+                filtered = filtered[
+                    filtered["restaurant_id"].astype(str)
+                    == str(restaurant_id)
+                ]
+                request["restaurant_id"] = restaurant_id
+                request["restaurant_scope"] = "single"
 
-            # Store resolved ID so downstream agents use it
-
-            request[
-                "restaurant_id"
-            ] = restaurant_id
-
-            request[
-                "restaurant_scope"
-            ] = "single"
-
-    # --------------------------------------------------------
-    # MENU ITEM FILTER
-    # --------------------------------------------------------
-
-    if (
-        request.get(
-            "menu_item_id"
-        )
-        is not None
-
-        or
-
-        request.get(
-            "menu_item_name"
-        )
-        is not None
-    ):
-
-        menu_item_id = (
-            resolve_menu_item(
-                request
-            )
-        )
-
-        if menu_item_id is not None:
-
+        if menu_item_ids:
             filtered = filtered[
-                filtered[
-                    "menu_item_id"
-                ]
-                .astype(str)
-                ==
-                str(menu_item_id)
+                filtered["menu_item_id"].astype(str).isin(
+                    [str(value) for value in menu_item_ids]
+                )
             ]
-
-            request[
-                "menu_item_id"
-            ] = menu_item_id
-
-    # --------------------------------------------------------
-    # CHECK RESULT
-    # --------------------------------------------------------
+        elif (
+            request.get("menu_item_id") is not None
+            or request.get("menu_item_name") is not None
+        ):
+            menu_item_id = resolve_menu_item(request)
+            if menu_item_id is not None:
+                filtered = filtered[
+                    filtered["menu_item_id"].astype(str)
+                    == str(menu_item_id)
+                ]
+                request["menu_item_id"] = menu_item_id
 
     if filtered.empty:
-
         raise ValueError(
-            "No data was found for the "
-            "selected restaurant/menu item."
+            "No data was found for the selected restaurant/menu item combination(s)."
         )
 
     return filtered
@@ -1355,100 +1343,260 @@ def run_customer_pattern(state):
     )
 
     # --------------------------------------------------------
-    # GET DATA FROM DATA ANALYST
+    # GET COMPLETE DATASET FROM SHARED CONTEXT
     # --------------------------------------------------------
+    # Customer-pattern features are model-training features.
+    # Therefore, whenever this agent is part of the forecasting
+    # workflow, patterns must be generated for EVERY
+    # restaurant/menu-item combination, not only the combination
+    # requested by the user.
 
-    data = (
-        get_data_analyst_output(
-            state
+    unified_path = (
+        state.get("shared_context", {})
+        .get("data", {})
+        .get("unified_demand_path")
+    )
+
+    if not unified_path:
+        raise ValueError(
+            "Customer Pattern Agent requires unified_demand_path "
+            "from Data Analyst."
         )
+
+    unified_path = Path(unified_path)
+
+    if not unified_path.exists():
+        raise FileNotFoundError(
+            f"Unified demand file not found: {unified_path}"
+        )
+
+    data = pd.read_csv(
+        unified_path,
+        low_memory=False
     )
 
     # --------------------------------------------------------
-    # GET REQUEST
+    # PRESERVE THE ORIGINAL USER REQUEST
     # --------------------------------------------------------
+    # Example:
+    # restaurant 1 + menu item 2 + next 2 days
+    #
+    # This request must remain unchanged for Demand Forecasting.
+    # We create a separate state only for dataset-level customer
+    # pattern generation.
 
-    request = state[
+    original_request = state.get(
+        "request",
+        {}
+    )
+
+    pattern_state = dict(state)
+
+    pattern_request = dict(
+        original_request
+    )
+
+    # --------------------------------------------------------
+    # FORCE DATASET-LEVEL CUSTOMER PATTERN ANALYSIS
+    # --------------------------------------------------------
+    # The Customer Pattern Agent switches to single-item mode when
+    # restaurant_scope == "single" AND restaurant_id/menu_item_id
+    # are present. Clear those fields only in pattern_state so that
+    # analyze_all_items() runs over the complete dataset.
+
+    pattern_request[
+        "restaurant_scope"
+    ] = "all"
+
+    pattern_request[
+        "restaurant_id"
+    ] = None
+
+    pattern_request[
+        "restaurant_name"
+    ] = None
+
+    pattern_request[
+        "menu_item_id"
+    ] = None
+
+    pattern_request[
+        "menu_item_name"
+    ] = None
+
+    pattern_state[
         "request"
-    ]
+    ] = pattern_request
+
+    # Give the Customer Pattern Agent the COMPLETE processed
+    # dataset directly. Its load_sales_data() checks sales_data
+    # before other sources.
+    pattern_state[
+        "sales_data"
+    ] = data
 
     # --------------------------------------------------------
-    # RESOLVE RESTAURANT
+    # RUN CUSTOMER PATTERN AGENT
     # --------------------------------------------------------
 
-    if (
-        request.get(
-            "restaurant_scope"
-        )
-        != "all"
+    result = customer_pattern_agent(
+        pattern_state
+    )
+
+    if not isinstance(
+        result,
+        dict
     ):
+        raise ValueError(
+            "Customer Pattern Agent returned an invalid result."
+        )
 
-        restaurant_id = (
-            resolve_restaurant(
-                request
+    # --------------------------------------------------------
+    # GET GENERATED FEATURE FILE
+    # --------------------------------------------------------
+
+    customer_pattern_path = (
+        result.get("output_path")
+        or result.get("patterns_file")
+    )
+
+    if not customer_pattern_path:
+        raise ValueError(
+            "Customer Pattern Agent did not generate the complete "
+            "customer-pattern feature file."
+        )
+
+    customer_pattern_path = Path(
+        customer_pattern_path
+    )
+
+    if not customer_pattern_path.is_absolute():
+
+        customer_pattern_path = (
+            Path(__file__).resolve().parent
+            / customer_pattern_path
+        )
+
+    customer_pattern_path = (
+        customer_pattern_path.resolve()
+    )
+
+    if not customer_pattern_path.exists():
+
+        raise FileNotFoundError(
+            "Customer pattern feature file was not created: "
+            f"{customer_pattern_path}"
+        )
+
+    # --------------------------------------------------------
+    # VALIDATE FEATURE FILE
+    # --------------------------------------------------------
+
+    pattern_features = pd.read_csv(
+        customer_pattern_path,
+        low_memory=False
+    )
+
+    required_columns = {
+        "restaurant_id",
+        "menu_item_id",
+        "customer_demand_trend",
+        "pattern_strength",
+    }
+
+    missing_columns = (
+        required_columns
+        - set(pattern_features.columns)
+    )
+
+    if missing_columns:
+
+        raise ValueError(
+            "Customer pattern feature file is missing columns: "
+            + ", ".join(
+                sorted(
+                    missing_columns
+                )
             )
         )
 
-        if restaurant_id is not None:
+    if pattern_features.empty:
 
-            request[
-                "restaurant_id"
-            ] = restaurant_id
-
-            request[
-                "restaurant_scope"
-            ] = "single"
-
-    # --------------------------------------------------------
-    # RESOLVE MENU ITEM
-    # --------------------------------------------------------
-
-    if (
-        request.get(
-            "menu_item_id"
-        )
-        is not None
-
-        or
-
-        request.get(
-            "menu_item_name"
-        )
-        is not None
-    ):
-
-        menu_item_id = (
-            resolve_menu_item(
-                request
-            )
+        raise ValueError(
+            "Customer pattern feature file was created but contains "
+            "no restaurant/menu-item patterns."
         )
 
-        request[
-            "menu_item_id"
-        ] = menu_item_id
-
-    # --------------------------------------------------------
-    # RUN REAL AGENT
-    # --------------------------------------------------------
-
-    result = (
-        customer_pattern_agent(
-            state,
-            data
-        )
+    combination_count = (
+        pattern_features[
+            [
+                "restaurant_id",
+                "menu_item_id",
+            ]
+        ]
+        .drop_duplicates()
+        .shape[0]
     )
 
     # --------------------------------------------------------
-    # REGISTER CUSTOMER PATTERN OUTPUT IN SHARED CONTEXT
+    # REGISTER FULL FEATURE PATH IN SHARED CONTEXT
     # --------------------------------------------------------
 
-    state["shared_context"][
+    state.setdefault(
+        "shared_context",
+        {}
+    )
+
+    state[
+        "shared_context"
+    ].setdefault(
+        "data",
+        {}
+    )
+
+    state[
+        "shared_context"
+    ][
+        "data"
+    ][
+        "customer_pattern_features_path"
+    ] = str(
+        customer_pattern_path
+    )
+
+    # Keep lightweight metadata under customer_pattern.
+    # Do NOT replace the user's original request or store the full
+    # DataFrame in shared context.
+
+    state[
+        "shared_context"
+    ][
         "customer_pattern"
-    ] = result
+    ] = {
+        "output_path":
+            str(
+                customer_pattern_path
+            ),
+
+        "pattern_count":
+            int(
+                combination_count
+            ),
+    }
+
+    print(
+        "[CUSTOMER PATTERN] "
+        f"Generated patterns for "
+        f"{combination_count:,} "
+        "restaurant/menu-item combinations."
+    )
 
     print(
         "[SHARED CONTEXT] "
-        "Customer pattern registered."
+        "customer_pattern_features_path:",
+        str(
+            customer_pattern_path
+        )
     )
 
     print(
@@ -1456,7 +1604,53 @@ def run_customer_pattern(state):
         "Customer Pattern Agent completed."
     )
 
-    return result
+    # Return dataset-level metadata to the orchestrator.
+    # The original state['request'] is untouched, so the Demand
+    # Forecasting Agent can later retrieve exactly what the user
+    # requested from the complete 7-day forecast.
+
+    requested_pairs = original_request.get("restaurant_item_pairs") or []
+
+    if requested_pairs:
+        selected_patterns = []
+
+        for pair in requested_pairs:
+            match = pattern_features.copy()
+
+            if pair.get("restaurant_id") is not None:
+                match = match[
+                    match["restaurant_id"].astype(str)
+                    == str(pair.get("restaurant_id"))
+                ]
+
+            if pair.get("menu_item_id") is not None:
+                match = match[
+                    match["menu_item_id"].astype(str)
+                    == str(pair.get("menu_item_id"))
+                ]
+
+            for _, row in match.iterrows():
+                selected_patterns.append({
+                    "restaurant_id": row.get("restaurant_id"),
+                    "menu_item_id": row.get("menu_item_id"),
+                    "customer_demand_trend": row.get("customer_demand_trend"),
+                    "pattern_strength": row.get("pattern_strength"),
+                })
+
+        return {
+            "analysis_type": "customer_pattern_analysis",
+            "scope": "requested_restaurant_item_pairs",
+            "patterns": selected_patterns,
+            "pattern_count": len(selected_patterns),
+            "output_path": str(customer_pattern_path),
+        }
+
+    return {
+        "analysis_type": "customer_pattern_analysis",
+        "scope": "all_restaurant_menu_combinations",
+        "pattern_count": int(combination_count),
+        "output_path": str(customer_pattern_path),
+    }
 
 
 # ============================================================
@@ -1545,16 +1739,15 @@ def run_demand_forecasting(state):
         {}
     )
 
-    forecast_horizon = int(
-        request.get(
-            "forecast_horizon"
-        )
-        or 7
+    requested_forecast_horizon = int(
+        request.get("forecast_horizon") or 7
     )
+    request["requested_forecast_horizon"] = requested_forecast_horizon
 
-    request[
-        "forecast_horizon"
-    ] = forecast_horizon
+    # The production forecast is deliberately limited to the next 7 days.
+    # Longer-horizon values are not exposed because their accuracy degrades.
+    forecast_horizon = 7
+    request["forecast_horizon"] = forecast_horizon
 
     print(
         "[DEMAND FORECAST] "
@@ -1629,6 +1822,60 @@ def run_demand_forecasting(state):
         "[INTEGRATION] "
         "Demand Forecasting Agent completed."
     )
+
+    return result
+
+
+# ============================================================
+# REAL INVENTORY DECISION AGENT WRAPPER
+# ============================================================
+
+def run_inventory_decision(state):
+    """Run inventory decisions from the forecast produced in this workflow."""
+
+    print("[INTEGRATION] Starting Inventory Decision Agent...")
+
+    shared_context = state.get("shared_context", {})
+    forecast_context = shared_context.get("forecast", {})
+    forecast_path = forecast_context.get("output_path")
+
+    if not forecast_path:
+        raise ValueError(
+            "Inventory Decision Agent requires the demand forecast output "
+            "from shared_context['forecast']['output_path']."
+        )
+
+    shared_data = shared_context.get("data", {})
+    unified_path = shared_data.get("unified_demand_path")
+
+    if not unified_path:
+        raise ValueError(
+            "Inventory Decision Agent requires unified_demand_path from Data Analyst."
+        )
+
+    project_root = Path(__file__).resolve().parent
+    output_path = project_root / "data" / "outputs" / "inventory_decisions.csv"
+
+    inventory_agent = InventoryDecisionAgent(
+        inventory_path=project_root / "data" / "inventory_dataset.csv",
+        recipe_path=project_root / "data" / "ingredients.csv",
+        unified_demand_path=unified_path,
+    )
+
+    result = inventory_agent.run(
+        forecast_path=forecast_path,
+        output_path=output_path,
+    )
+
+    shared_context.setdefault("inventory", {}).update({
+        "output_path": result.get("output_path"),
+        "forecast_horizon_days": result.get("forecast_horizon_days"),
+        "orders_recommended": result.get("orders_recommended"),
+        "stockout_risk_counts": result.get("stockout_risk_counts", {}),
+    })
+
+    print("[SHARED CONTEXT] Inventory decision registered.")
+    print("[INTEGRATION] Inventory Decision Agent completed.")
 
     return result
 
@@ -1767,6 +2014,27 @@ orchestrator.register_agent(
         "restaurant"
     ]
 )
+
+# ============================================================
+# REGISTER INVENTORY DECISION
+# ============================================================
+
+orchestrator.register_agent(
+    agent_name="inventory_decision",
+    agent_function=run_inventory_decision,
+    capabilities=[
+        "inventory_decision",
+        "order_recommendation",
+        "stockout_analysis",
+    ],
+    dependencies=[
+        "demand_forecasting"
+    ],
+    required_user_inputs=[
+        "restaurant"
+    ]
+)
+
 
 # ============================================================
 # PRINT RESULT
@@ -2375,93 +2643,208 @@ def print_result(response):
         )
 
         # ----------------------------------------------------
-        # Restaurant
+        # Warning / unavailable forecast
         # ----------------------------------------------------
 
-        if forecast.get(
-            "restaurant_id"
-        ) is not None:
+        if forecast.get("status") == "warning":
 
             print(
-                "Restaurant:",
-                forecast[
-                    "restaurant_id"
-                ]
-            )
-
-        # ----------------------------------------------------
-        # Menu Item
-        # ----------------------------------------------------
-
-        if forecast.get(
-            "menu_item_id"
-        ) is not None:
-
-            print(
-                "Menu Item:",
-                forecast[
-                    "menu_item_id"
-                ]
-            )
-
-        # ----------------------------------------------------
-        # Specific Date
-        # ----------------------------------------------------
-
-        if forecast.get(
-            "date"
-        ) is not None:
-
-            print(
-                "Date:",
-                forecast[
-                    "date"
-                ]
-            )
-
-        # ----------------------------------------------------
-        # Total predicted demand
-        # ----------------------------------------------------
-
-        total_demand = forecast.get(
-            "total_predicted_demand"
-        )
-
-        if total_demand is not None:
-
-            print(
-                "\nTotal Predicted Demand:",
-                round(
-                    total_demand,
-                    2
+                forecast.get(
+                    "message",
+                    "Forecast is not available."
                 )
             )
 
-        # ----------------------------------------------------
-        # Display values read from demand_forecast.csv
-        # ----------------------------------------------------
-
-        daily_forecast = forecast.get(
-            "daily_forecast",
-            []
-        )
-
-        if daily_forecast:
-
-            print(
-                "\nForecast:"
-            )
-
-            for row in daily_forecast:
+            if forecast.get("available_forecast_start"):
 
                 print(
-                    f"  {row['date']} : "
-                    f"{row['predicted_quantity']:.2f}"
+                    "Available Forecast Start:",
+                    forecast[
+                        "available_forecast_start"
+                    ]
                 )
 
-        # --------------------------------------------
-        # Evaluation metrics from historical backtest
-        # --------------------------------------------
+            if forecast.get("available_forecast_end"):
+
+                print(
+                    "Available Forecast End:",
+                    forecast[
+                        "available_forecast_end"
+                    ]
+                )
+
+        # ----------------------------------------------------
+        # Multiple explicitly paired restaurant/item results
+        # ----------------------------------------------------
+
+        elif forecast.get("combination_results"):
+
+            combination_results = forecast.get(
+                "combination_results",
+                []
+            )
+
+            print(
+                "Number of combinations:",
+                len(combination_results)
+            )
+
+            for combination in combination_results:
+
+                restaurant_id = combination.get(
+                    "restaurant_id"
+                )
+
+                menu_item_id = combination.get(
+                    "menu_item_id"
+                )
+
+                total_demand = combination.get(
+                    "total_predicted_demand"
+                )
+
+                daily_forecast = combination.get(
+                    "daily_forecast",
+                    []
+                )
+
+                print(
+                    "\n"
+                    + "-" * 45
+                )
+
+                print(
+                    "Restaurant:",
+                    restaurant_id
+                )
+
+                print(
+                    "Menu Item:",
+                    menu_item_id
+                )
+
+                if total_demand is not None:
+
+                    print(
+                        "Total Predicted Demand:",
+                        round(
+                            float(total_demand),
+                            2
+                        )
+                    )
+
+                if daily_forecast:
+
+                    print(
+                        "\nForecast:"
+                    )
+
+                    for row in daily_forecast:
+
+                        date = row.get(
+                            "date"
+                        )
+
+                        predicted_quantity = row.get(
+                            "predicted_quantity"
+                        )
+
+                        if predicted_quantity is not None:
+
+                            print(
+                                f"  {date} : "
+                                f"{float(predicted_quantity):.2f}"
+                            )
+
+            print(
+                "\n"
+                + "-" * 45
+            )
+
+        # ----------------------------------------------------
+        # Original single restaurant/item result
+        # ----------------------------------------------------
+
+        else:
+
+            restaurant_id = forecast.get(
+                "restaurant_id"
+            )
+
+            menu_item_id = forecast.get(
+                "menu_item_id"
+            )
+
+            requested_date = forecast.get(
+                "date"
+            )
+
+            total_demand = forecast.get(
+                "total_predicted_demand"
+            )
+
+            daily_forecast = forecast.get(
+                "daily_forecast",
+                []
+            )
+
+            if restaurant_id is not None:
+
+                print(
+                    "Restaurant:",
+                    restaurant_id
+                )
+
+            if menu_item_id is not None:
+
+                print(
+                    "Menu Item:",
+                    menu_item_id
+                )
+
+            if requested_date is not None:
+
+                print(
+                    "Date:",
+                    requested_date
+                )
+
+            if total_demand is not None:
+
+                print(
+                    "\nTotal Predicted Demand:",
+                    round(
+                        float(total_demand),
+                        2
+                    )
+                )
+
+            if daily_forecast:
+
+                print(
+                    "\nForecast:"
+                )
+
+                for row in daily_forecast:
+
+                    date = row.get(
+                        "date"
+                    )
+
+                    predicted_quantity = row.get(
+                        "predicted_quantity"
+                    )
+
+                    if predicted_quantity is not None:
+
+                        print(
+                            f"  {date} : "
+                            f"{float(predicted_quantity):.2f}"
+                        )
+
+        # ----------------------------------------------------
+        # Backtest evaluation
+        # ----------------------------------------------------
 
         evaluation = result.get(
             "evaluation",
@@ -2474,27 +2857,40 @@ def print_result(response):
                 "\nBacktest Evaluation:"
             )
 
-            print(
-                "wMAPE:",
-                evaluation.get(
-                    "wmape_percent"
-                ),
-                "%"
+            wmape = evaluation.get(
+                "wmape_percent"
             )
 
-            print(
-                "MAE:",
-                evaluation.get(
-                    "mae"
+            if wmape is not None:
+
+                print(
+                    "wMAPE:",
+                    wmape,
+                    "%"
                 )
+
+            mae = evaluation.get(
+                "mae"
             )
 
-            print(
-                "RMSE:",
-                evaluation.get(
-                    "rmse"
+            if mae is not None:
+
+                print(
+                    "MAE:",
+                    mae
                 )
+
+            rmse = evaluation.get(
+                "rmse"
             )
+
+            if rmse is not None:
+
+                print(
+                    "RMSE:",
+                    rmse
+                )
+
     # --------------------------------------------------------
     # ERRORS
     # --------------------------------------------------------

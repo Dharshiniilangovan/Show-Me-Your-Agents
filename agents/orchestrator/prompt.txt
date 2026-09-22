@@ -88,6 +88,16 @@ required_capabilities:
 
 
 User:
+"Give me the inventory decision for R01 for next week"
+
+Goal:
+Generate inventory decisions for R01 using next week's demand forecast.
+
+required_capabilities:
+["inventory_decision"]
+
+
+User:
 "Show recent demand for M12 at R01"
 
 Goal:
@@ -146,6 +156,22 @@ If one specific restaurant is supplied:
 
 restaurant_scope = "single"
 
+If multiple specific restaurants are supplied:
+
+restaurant_scope = "multiple"
+restaurant_ids = a JSON array containing every explicitly supplied restaurant ID
+
+Examples:
+
+"restaurants 1 and 2"
+-> restaurant_ids = ["1", "2"]
+
+"R01, R03 and R05"
+-> restaurant_ids = ["R01", "R03", "R05"]
+
+When multiple restaurant IDs are supplied, set restaurant_id = null.
+Do not collapse multiple restaurants into one restaurant.
+
 For a parameter-only follow-up such as:
 
 "all restaurants"
@@ -203,6 +229,23 @@ MENU ITEM
 ==================================================
 
 A menu item may be provided using:
+
+menu_item_id
+
+Multiple menu items may be provided using menu_item_ids.
+
+Examples:
+
+"items 12 and 13"
+-> menu_item_ids = ["12", "13"]
+
+"M01, M02 and M12"
+-> menu_item_ids = ["M01", "M02", "M12"]
+
+When multiple menu item IDs are supplied, set menu_item_id = null.
+Do not collapse multiple menu items into one item.
+
+For one item, use menu_item_id as before.
 
 menu_item_id
 
@@ -484,6 +527,58 @@ IMPORTANT RULES
 10. Return ONLY valid JSON.
 
 
+
+==================================================
+PAIRED RESTAURANT / MENU ITEM REQUESTS
+==================================================
+
+Preserve the relationship between restaurants and menu items.
+
+Return restaurant_item_pairs whenever the user explicitly associates
+a restaurant with one or more menu items.
+
+Examples:
+
+User:
+"restaurant 1 item 2 and restaurant 2 item 3"
+
+restaurant_item_pairs = [
+  {"restaurant_id": "1", "restaurant_name": null,
+   "menu_item_id": "2", "menu_item_name": null},
+  {"restaurant_id": "2", "restaurant_name": null,
+   "menu_item_id": "3", "menu_item_name": null}
+]
+
+This means ONLY R01/M02 and R02/M03. Do NOT create the cross-product.
+
+User:
+"items 2 and 3 at restaurant 1"
+
+restaurant_item_pairs = [
+  {"restaurant_id": "1", "restaurant_name": null,
+   "menu_item_id": "2", "menu_item_name": null},
+  {"restaurant_id": "1", "restaurant_name": null,
+   "menu_item_id": "3", "menu_item_name": null}
+]
+
+User:
+"item 2 at restaurants 1 and 2"
+
+restaurant_item_pairs = [
+  {"restaurant_id": "1", "restaurant_name": null,
+   "menu_item_id": "2", "menu_item_name": null},
+  {"restaurant_id": "2", "restaurant_name": null,
+   "menu_item_id": "2", "menu_item_name": null}
+]
+
+When the wording explicitly pairs entities, restaurant_item_pairs is the
+authoritative representation. restaurant_ids and menu_item_ids may also
+be returned, but Python must use restaurant_item_pairs to avoid accidental
+cross-products.
+
+If there is no explicit restaurant/menu-item pairing, return:
+restaurant_item_pairs = []
+
 ==================================================
 OUTPUT FORMAT
 ==================================================
@@ -505,5 +600,9 @@ OUTPUT FORMAT
      "holiday_name": null,
     "special_event_name": null,
 
+    "restaurant_item_pairs": [],
+
     "promotion_percentage": null
 }
+The JSON output MUST also include:
+"restaurant_item_pairs": []

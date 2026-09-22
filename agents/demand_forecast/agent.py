@@ -10,25 +10,25 @@ Uses outputs from Phase-1 agents:
    state["shared_context"]["data"]["context_features_path"]
 
 3. Customer Pattern
-   state["shared_context"]["customer_pattern"]
+   state["shared_context"]["data"]["customer_pattern_features_path"]
 
 Workflow:
-1. Load unified demand data.
+1. Load the COMPLETE unified demand dataset.
 2. Merge Context / Seasonality features.
-3. Add usable Customer Pattern features.
-4. Filter requested restaurant/item.
-5. Create calendar, lag and rolling features.
-6. Backtest on the last N historical days.
-7. Print validation wMAPE.
-8. Train final LightGBM model on all historical data.
-9. Generate recursive future demand forecasts.
-10. Save detailed demand_forecast.csv.
-11. Read demand_forecast.csv.
-12. Filter/aggregate according to the user's request.
-13. Return requested demand values.
+3. Merge Customer Pattern features for every restaurant/menu-item combination.
+4. Create calendar, lag and rolling features on the complete dataset.
+5. Backtest on the last 7 historical days.
+6. Train the final LightGBM model on the complete historical dataset.
+7. Forecast every restaurant/menu-item combination for the next 7 days.
+8. Save the complete detailed forecast to demand_forecast.csv.
+9. Read demand_forecast.csv.
+10. Apply the user's restaurant/menu-item/date request only to the generated forecast.
+11. Return the requested values when they are inside the 7-day window.
+12. Return an accuracy warning for requests outside the 7-day window.
 """
 
 from pathlib import Path
+import pickle
 
 import lightgbm as lgb
 import numpy as np
@@ -36,6 +36,148 @@ import pandas as pd
 
 
 class DemandForecastingAgent:
+
+    # ============================================================
+    # APPLICATION CLOCK / WEEKLY FORECAST POLICY
+    # ============================================================
+    #
+    # For this project/demo, 2025-12-01 is treated as the current date.
+    # Forecasts are generated in non-overlapping 7-day blocks:
+    #
+    #   2025-12-01 -> 2025-12-07
+    #   2025-12-08 -> 2025-12-14
+    #   2025-12-15 -> 2025-12-21
+    #   ...
+    #
+    # The model is persisted to disk and reused. It is NOT retrained for
+    # every chatbot request. A new weekly forecast is generated only when
+    # the requested date falls outside the currently stored forecast file.
+    #
+    CURRENT_DATE = pd.Timestamp("2026-01-01")
+    FORECAST_HORIZON = 7
+
+    @classmethod
+    def _get_week_start(cls, request):
+        """Return the 7-day block start for the user's requested date."""
+
+        requested_date = (
+            request.get("forecast_date")
+            or request.get("date")
+        )
+
+        if requested_date is None:
+            return cls.CURRENT_DATE.normalize()
+
+        requested_date = pd.to_datetime(
+            requested_date,
+            errors="coerce"
+        )
+
+        if pd.isna(requested_date):
+            raise ValueError(
+                "The requested forecast date could not be understood."
+            )
+
+        requested_date = requested_date.normalize()
+        base_date = cls.CURRENT_DATE.normalize()
+
+        if requested_date < base_date:
+            raise ValueError(
+                f"Forecasts are available from {base_date.date()} onward."
+            )
+
+        days_from_base = (
+            requested_date - base_date
+        ).days
+
+        block_offset = (
+            days_from_base
+            // cls.FORECAST_HORIZON
+        ) * cls.FORECAST_HORIZON
+
+        return (
+            base_date
+            + pd.Timedelta(days=block_offset)
+        )
+
+    @staticmethod
+    def _forecast_covers_week(output_path, week_start, forecast_horizon):
+        """Check whether the saved forecast already covers this weekly block."""
+
+        output_path = Path(output_path)
+
+        if not output_path.exists():
+            return False
+
+        try:
+            existing = pd.read_csv(output_path)
+        except Exception:
+            return False
+
+        if existing.empty or "date" not in existing.columns:
+            return False
+
+        dates = pd.to_datetime(
+            existing["date"],
+            errors="coerce"
+        ).dropna()
+
+        if dates.empty:
+            return False
+
+        expected_end = (
+            pd.Timestamp(week_start)
+            + pd.Timedelta(days=forecast_horizon - 1)
+        )
+
+        return (
+            dates.min().normalize()
+            == pd.Timestamp(week_start).normalize()
+            and
+            dates.max().normalize()
+            == expected_end.normalize()
+        )
+
+    @staticmethod
+    def _save_model_bundle(
+        model_path,
+        model,
+        features,
+        encoders,
+        evaluation_wmape,
+    ):
+        """Persist the trained model and feature metadata."""
+
+        model_path = Path(model_path)
+        model_path.parent.mkdir(
+            parents=True,
+            exist_ok=True
+        )
+
+        bundle = {
+            "model": model,
+            "features": features,
+            "encoders": encoders,
+            "evaluation_wmape": evaluation_wmape,
+        }
+
+        with open(model_path, "wb") as file:
+            pickle.dump(bundle, file)
+
+    @staticmethod
+    def _load_model_bundle(model_path):
+        """Load a previously trained model bundle."""
+
+        model_path = Path(model_path)
+
+        if not model_path.exists():
+            return None
+
+        try:
+            with open(model_path, "rb") as file:
+                return pickle.load(file)
+        except Exception:
+            return None
 
     # ============================================================
     # 1. INITIALIZE MODEL
@@ -134,17 +276,24 @@ class DemandForecastingAgent:
     # ============================================================
 
     @staticmethod
-    def _get_customer_pattern(state):
+    def _get_customer_pattern_features_path(state):
+        shared_context = state.get("shared_context", {})
+        shared_data = shared_context.get("data", {})
+        pattern_path = shared_data.get("customer_pattern_features_path")
 
-        shared_context = state.get(
-            "shared_context",
-            {}
-        )
+        if not pattern_path:
+            raise ValueError(
+                "customer_pattern_features_path is missing from "
+                "state['shared_context']['data']. Run the Customer Pattern "
+                "Agent before Demand Forecasting."
+            )
 
-        return shared_context.get(
-            "customer_pattern",
-            {}
-        )
+        pattern_path = Path(pattern_path)
+        if not pattern_path.exists():
+            raise FileNotFoundError(
+                f"Customer pattern feature file not found: {pattern_path}"
+            )
+        return pattern_path
 
     # ============================================================
     # 5. MERGE CONTEXT / SEASONALITY FEATURES
@@ -251,136 +400,37 @@ class DemandForecastingAgent:
     # ============================================================
 
     @staticmethod
-    def _add_customer_pattern_features(
-        data,
-        customer_pattern
-    ):
-
+    def _add_customer_pattern_features(data, customer_pattern_path):
+        """Merge row-level customer-pattern features into model training data."""
         result = data.copy()
+        pattern_df = pd.read_csv(customer_pattern_path)
 
-        if not isinstance(
-            customer_pattern,
-            dict
-        ):
+        if pattern_df.empty:
             return result
 
-        # --------------------------------------------------------
-        # Helper
-        # --------------------------------------------------------
-
-        def add_numeric_feature(
-            output_column,
-            value
-        ):
-
-            if value is None:
-                return
-
-            try:
-
-                result[
-                    output_column
-                ] = float(value)
-
-            except (
-                TypeError,
-                ValueError
-            ):
-                pass
-
-        # --------------------------------------------------------
-        # Direct numeric customer-pattern features
-        # --------------------------------------------------------
-
-        add_numeric_feature(
-            "customer_demand_shift_pct",
-            customer_pattern.get(
-                "demand_shift_pct"
-            )
-        )
-
-        add_numeric_feature(
-            "customer_purchase_frequency",
-            customer_pattern.get(
-                "purchase_frequency"
-            )
-        )
-
-        add_numeric_feature(
-            "customer_popularity_score",
-            customer_pattern.get(
-                "popularity_score"
-            )
-        )
-
-        add_numeric_feature(
-            "customer_relationship_score",
-            customer_pattern.get(
-                "relationship_score"
-            )
-        )
-
-        # --------------------------------------------------------
-        # Unusual-pattern flag
-        # --------------------------------------------------------
-
-        unusual_pattern = (
-            customer_pattern.get(
-                "unusual_pattern"
-            )
-        )
-
-        if unusual_pattern is not None:
-
-            result[
-                "customer_unusual_pattern"
-            ] = int(
-                bool(
-                    unusual_pattern
-                )
+        merge_keys = [
+            key for key in ["restaurant_id", "menu_item_id"]
+            if key in result.columns and key in pattern_df.columns
+        ]
+        if len(merge_keys) != 2:
+            raise ValueError(
+                "Customer pattern features must contain restaurant_id and "
+                "menu_item_id for model training."
             )
 
-        # --------------------------------------------------------
-        # Nested numeric metrics
-        # --------------------------------------------------------
+        # Normalize identifiers before merging to avoid int/string mismatches.
+        for key in merge_keys:
+            result[key] = result[key].astype(str)
+            pattern_df[key] = pattern_df[key].astype(str)
 
-        metrics = customer_pattern.get(
-            "metrics",
-            {}
+        feature_columns = [
+            c for c in pattern_df.columns
+            if c not in merge_keys and c not in result.columns
+        ]
+        pattern_subset = pattern_df[merge_keys + feature_columns].drop_duplicates(
+            subset=merge_keys
         )
-
-        if isinstance(
-            metrics,
-            dict
-        ):
-
-            for key, value in metrics.items():
-
-                if isinstance(
-                    value,
-                    (
-                        int,
-                        float,
-                        np.integer,
-                        np.floating
-                    )
-                ):
-
-                    safe_key = (
-                        str(key)
-                        .strip()
-                        .lower()
-                        .replace(
-                            " ",
-                            "_"
-                        )
-                    )
-
-                    result[
-                        f"customer_{safe_key}"
-                    ] = float(value)
-
-        return result
+        return result.merge(pattern_subset, on=merge_keys, how="left")
 
     # ============================================================
     # 7. FILTER REQUESTED SCOPE
@@ -440,7 +490,6 @@ class DemandForecastingAgent:
                     menu_item_id
                 )
             ]
-
         if result.empty:
 
             raise ValueError(
@@ -1547,17 +1596,12 @@ class DemandForecastingAgent:
         model,
         features,
         encoders,
-        forecast_horizon
+        forecast_horizon,
+        forecast_start_date
     ):
 
         history = (
             history.copy()
-        )
-
-        last_date = (
-            history[
-                "date"
-            ].max()
         )
 
         combinations = (
@@ -1579,13 +1623,16 @@ class DemandForecastingAgent:
         # Recursive forecast
         # --------------------------------------------------------
 
+        forecast_start_date = pd.Timestamp(
+            forecast_start_date
+        ).normalize()
+
         for step in range(
-            1,
-            forecast_horizon + 1
+            forecast_horizon
         ):
 
             future_date = (
-                last_date
+                forecast_start_date
                 + pd.Timedelta(
                     days=step
                 )
@@ -1802,241 +1849,222 @@ class DemandForecastingAgent:
     # ============================================================
 
     @staticmethod
+    @staticmethod
     def _get_requested_forecast(
         forecast_data,
         request
     ):
+        """
+        Retrieve requested forecast rows from the already-generated 7-day CSV.
 
-        result = (
-            forecast_data.copy()
-        )
+        Explicit restaurant_item_pairs preserve pairing and never create a
+        Cartesian product.
+        """
 
-        restaurant_scope = (
-            request.get(
-                "restaurant_scope"
-            )
-        )
-
-        restaurant_id = (
-            request.get(
-                "restaurant_id"
-            )
-        )
-
-        menu_item_id = (
-            request.get(
-                "menu_item_id"
-            )
-        )
+        result = forecast_data.copy()
 
         requested_date = (
-            request.get(
-                "forecast_date"
-            )
-            or
-            request.get(
-                "date"
-            )
+            request.get("forecast_date")
+            or request.get("date")
         )
 
-        # --------------------------------------------------------
-        # Restaurant
-        # --------------------------------------------------------
+        requested_forecast_horizon = int(
+            request.get("requested_forecast_horizon")
+            or request.get("forecast_horizon")
+            or 7
+        )
+
+        requested_forecast_horizon = max(
+            1,
+            min(requested_forecast_horizon, 7)
+        )
+
+        if requested_date is not None:
+            parsed_requested_date = pd.to_datetime(
+                requested_date,
+                errors="coerce"
+            )
+            if pd.isna(parsed_requested_date):
+                raise ValueError(
+                    "The requested forecast date could not be understood."
+                )
+
+            available_start = result["date"].min().normalize()
+            available_end = result["date"].max().normalize()
+
+            if not (
+                available_start
+                <= parsed_requested_date.normalize()
+                <= available_end
+            ):
+                return {
+                    "status": "warning",
+                    "message": (
+                        "Demand forecasts are only considered reliable for "
+                        "the available 7-day window."
+                    ),
+                    "available_forecast_start": str(available_start.date()),
+                    "available_forecast_end": str(available_end.date()),
+                }
+
+        pairs = request.get("restaurant_item_pairs") or []
+
+        # Backward-compatible conversion for singular/list requests.
+        if not pairs:
+            restaurant_ids = request.get("restaurant_ids") or []
+            menu_item_ids = request.get("menu_item_ids") or []
+
+            if not restaurant_ids and request.get("restaurant_id") is not None:
+                restaurant_ids = [request.get("restaurant_id")]
+
+            if not menu_item_ids and request.get("menu_item_id") is not None:
+                menu_item_ids = [request.get("menu_item_id")]
+
+            if restaurant_ids and menu_item_ids:
+                pairs = [
+                    {
+                        "restaurant_id": restaurant_id,
+                        "menu_item_id": menu_item_id,
+                    }
+                    for restaurant_id in restaurant_ids
+                    for menu_item_id in menu_item_ids
+                ]
+
+        if pairs:
+            combination_results = []
+
+            for pair in pairs:
+                pair_result = result.copy()
+
+                restaurant_id = pair.get("restaurant_id")
+                menu_item_id = pair.get("menu_item_id")
+
+                if restaurant_id is not None:
+                    pair_result = pair_result[
+                        pair_result["restaurant_id"].astype(str)
+                        == str(restaurant_id)
+                    ]
+
+                if menu_item_id is not None:
+                    pair_result = pair_result[
+                        pair_result["menu_item_id"].astype(str)
+                        == str(menu_item_id)
+                    ]
+
+                if requested_date is not None:
+                    pair_result = pair_result[
+                        pair_result["date"].dt.date
+                        == parsed_requested_date.date()
+                    ]
+                else:
+                    dates = (
+                        pair_result["date"]
+                        .drop_duplicates()
+                        .sort_values()
+                        .head(requested_forecast_horizon)
+                    )
+                    pair_result = pair_result[
+                        pair_result["date"].isin(dates)
+                    ]
+
+                if pair_result.empty:
+                    continue
+
+                daily = (
+                    pair_result.groupby(
+                        "date",
+                        as_index=False
+                    )["predicted_quantity"]
+                    .sum()
+                )
+
+                daily["date"] = daily["date"].dt.strftime("%Y-%m-%d")
+
+                combination_results.append({
+                    "restaurant_id": restaurant_id,
+                    "menu_item_id": menu_item_id,
+                    "total_predicted_demand": float(
+                        pair_result["predicted_quantity"].sum()
+                    ),
+                    "daily_forecast": daily.to_dict(orient="records"),
+                })
+
+            if not combination_results:
+                raise ValueError(
+                    "No forecast was found for the requested "
+                    "restaurant/item combination(s)."
+                )
+
+            return {
+                "scope": "restaurant_item_pairs",
+                "combination_results": combination_results,
+                "combination_count": len(combination_results),
+            }
+
+        # No explicit pairs: preserve all-restaurants/all-items behavior.
+        restaurant_scope = request.get("restaurant_scope")
+        restaurant_id = request.get("restaurant_id")
+        menu_item_id = request.get("menu_item_id")
 
         if (
             restaurant_scope == "single"
             and restaurant_id is not None
         ):
-
             result = result[
-                result[
-                    "restaurant_id"
-                ].astype(str)
-                == str(
-                    restaurant_id
-                )
+                result["restaurant_id"].astype(str)
+                == str(restaurant_id)
             ]
-
-        # --------------------------------------------------------
-        # Menu item
-        # --------------------------------------------------------
 
         if menu_item_id is not None:
-
             result = result[
-                result[
-                    "menu_item_id"
-                ].astype(str)
-                == str(
-                    menu_item_id
-                )
+                result["menu_item_id"].astype(str)
+                == str(menu_item_id)
             ]
-
-        # --------------------------------------------------------
-        # Date
-        # --------------------------------------------------------
 
         if requested_date is not None:
-
-            requested_date = (
-                pd.to_datetime(
-                    requested_date,
-                    errors="coerce"
-                )
-            )
-
-            if pd.isna(
-                requested_date
-            ):
-
-                raise ValueError(
-                    "The requested forecast date "
-                    "could not be understood."
-                )
-
             result = result[
-                result[
-                    "date"
-                ].dt.date
-                ==
-                requested_date.date()
+                result["date"].dt.date
+                == parsed_requested_date.date()
+            ]
+        else:
+            dates = (
+                result["date"]
+                .drop_duplicates()
+                .sort_values()
+                .head(requested_forecast_horizon)
+            )
+            result = result[
+                result["date"].isin(dates)
             ]
 
-        # --------------------------------------------------------
-        # No match
-        # --------------------------------------------------------
-
         if result.empty:
-
-            available_start = (
-                forecast_data[
-                    "date"
-                ]
-                .min()
-                .date()
-            )
-
-            available_end = (
-                forecast_data[
-                    "date"
-                ]
-                .max()
-                .date()
-            )
-
             raise ValueError(
-                "No forecast was found for the "
-                "requested restaurant/item/date. "
-                f"Available forecast dates are "
-                f"{available_start} to "
-                f"{available_end}."
+                "No forecast was found for the requested scope."
             )
 
-        # --------------------------------------------------------
-        # Total predicted demand
-        # --------------------------------------------------------
-
-        total_predicted_demand = float(
-            result[
-                "predicted_quantity"
-            ].sum()
-        )
-
-        # --------------------------------------------------------
-        # Daily predicted demand
-        # --------------------------------------------------------
-
-        daily_forecast = (
+        daily = (
             result.groupby(
                 "date",
                 as_index=False
-            )[
-                "predicted_quantity"
-            ]
+            )["predicted_quantity"]
             .sum()
         )
-
-        daily_forecast[
-            "date"
-        ] = (
-            daily_forecast[
-                "date"
-            ]
-            .dt.strftime(
-                "%Y-%m-%d"
-            )
-        )
-
-        daily_records = (
-            daily_forecast.to_dict(
-                orient="records"
-            )
-        )
-
-        # --------------------------------------------------------
-        # Determine scope
-        # --------------------------------------------------------
-
-        if (
-            restaurant_id is not None
-            and menu_item_id is not None
-        ):
-
-            scope = (
-                "restaurant_item"
-            )
-
-        elif menu_item_id is not None:
-
-            scope = (
-                "item"
-            )
-
-        elif (
-            restaurant_scope == "single"
-            and restaurant_id is not None
-        ):
-
-            scope = (
-                "restaurant"
-            )
-
-        else:
-
-            scope = "all"
+        daily["date"] = daily["date"].dt.strftime("%Y-%m-%d")
 
         response = {
-            "scope":
-                scope,
-
-            "total_predicted_demand":
-                total_predicted_demand,
-
-            "daily_forecast":
-                daily_records
+            "scope": "all" if restaurant_scope == "all" else "filtered",
+            "total_predicted_demand": float(
+                result["predicted_quantity"].sum()
+            ),
+            "daily_forecast": daily.to_dict(orient="records"),
         }
 
         if restaurant_id is not None:
-
-            response[
-                "restaurant_id"
-            ] = restaurant_id
-
+            response["restaurant_id"] = restaurant_id
         if menu_item_id is not None:
-
-            response[
-                "menu_item_id"
-            ] = menu_item_id
-
+            response["menu_item_id"] = menu_item_id
         if requested_date is not None:
-
-            response[
-                "date"
-            ] = (
-                requested_date.strftime(
-                    "%Y-%m-%d"
-                )
-            )
+            response["date"] = parsed_requested_date.strftime("%Y-%m-%d")
 
         return response
 
@@ -2053,32 +2081,159 @@ class DemandForecastingAgent:
             "\n===== DEMAND FORECASTING AGENT ====="
         )
 
-        # ========================================================
-        # REQUEST
-        # ========================================================
-
         request = state.get(
             "request",
             {}
         )
 
-        forecast_horizon = int(
-            request.get(
-                "forecast_horizon"
-            )
-            or 7
+        requested_forecast_horizon = int(
+            request.get("requested_forecast_horizon")
+            or request.get("forecast_horizon")
+            or self.FORECAST_HORIZON
         )
 
-        if forecast_horizon <= 0:
-
+        if requested_forecast_horizon <= 0:
             raise ValueError(
-                "forecast_horizon must "
-                "be greater than 0."
+                "forecast_horizon must be greater than 0."
             )
 
-        # ========================================================
-        # DATA ANALYST OUTPUT
-        # ========================================================
+        forecast_horizon = self.FORECAST_HORIZON
+
+        # --------------------------------------------------------
+        # FIXED DEMO CLOCK + WEEKLY FORECAST BLOCK
+        # --------------------------------------------------------
+
+        forecast_start_date = (
+            self._get_week_start(
+                request
+            )
+        )
+
+        forecast_end_date = (
+            forecast_start_date
+            + pd.Timedelta(
+                days=forecast_horizon - 1
+            )
+        )
+
+        print(
+            "[DEMAND FORECAST] Forecast block:",
+            str(forecast_start_date.date()),
+            "to",
+            str(forecast_end_date.date()),
+        )
+
+        # --------------------------------------------------------
+        # OUTPUT / MODEL PATHS
+        # --------------------------------------------------------
+
+        project_root = (
+            Path(__file__)
+            .resolve()
+            .parents[2]
+        )
+
+        output_dir = (
+            project_root
+            / "data"
+            / "outputs"
+        )
+
+        model_dir = (
+            project_root
+            / "data"
+            / "models"
+        )
+
+        output_dir.mkdir(
+            parents=True,
+            exist_ok=True
+        )
+
+        model_dir.mkdir(
+            parents=True,
+            exist_ok=True
+        )
+
+        output_path = (
+            output_dir
+            / "demand_forecast.csv"
+        )
+
+        model_path = (
+            model_dir
+            / "demand_forecasting_model.pkl"
+        )
+
+        # --------------------------------------------------------
+        # FAST PATH:
+        # USE THE ALREADY GENERATED WEEKLY FORECAST
+        # --------------------------------------------------------
+        #
+        # This is what prevents model training on every chatbot query.
+        # If the stored CSV already covers the requested 7-day block,
+        # simply read it and return the requested restaurant/item/date.
+
+        if self._forecast_covers_week(
+            output_path,
+            forecast_start_date,
+            forecast_horizon,
+        ):
+
+            print(
+                "[DEMAND FORECAST] Using cached weekly forecast. "
+                "No model training required."
+            )
+
+            forecast_data = (
+                self._read_forecast_csv(
+                    output_path
+                )
+            )
+
+            if requested_forecast_horizon > forecast_horizon:
+                requested_forecast = {
+                    "status": "warning",
+                    "message": (
+                        "Demand forecasts are generated in 7-day blocks. "
+                        "A request longer than 7 days is not returned as one "
+                        "forecast because accuracy may decrease."
+                    ),
+                    "available_forecast_start":
+                        str(forecast_start_date.date()),
+                    "available_forecast_end":
+                        str(forecast_end_date.date()),
+                }
+            else:
+                requested_forecast = (
+                    self._get_requested_forecast(
+                        forecast_data,
+                        request
+                    )
+                )
+
+            return {
+                "status": "success",
+                "forecast_horizon": forecast_horizon,
+                "forecast_start":
+                    str(forecast_start_date.date()),
+                "forecast_end":
+                    str(forecast_end_date.date()),
+                "output_path":
+                    str(output_path),
+                "model_path":
+                    str(model_path),
+                "model_trained":
+                    False,
+                "forecast_generated":
+                    False,
+                "result":
+                    requested_forecast,
+            }
+
+        # --------------------------------------------------------
+        # LOAD COMPLETE TRAINING DATA
+        # --------------------------------------------------------
 
         unified_path = (
             self._get_unified_path(
@@ -2087,12 +2242,13 @@ class DemandForecastingAgent:
         )
 
         demand_df = pd.read_csv(
-            unified_path
+            unified_path,
+            low_memory=False
         )
 
-        # ========================================================
-        # CONTEXT / SEASONALITY OUTPUT
-        # ========================================================
+        # --------------------------------------------------------
+        # MERGE CONTEXT / SEASONALITY FEATURES
+        # --------------------------------------------------------
 
         context_path = (
             self._get_context_features_path(
@@ -2101,7 +2257,6 @@ class DemandForecastingAgent:
         )
 
         if context_path is not None:
-
             demand_df = (
                 self._merge_context_features(
                     demand_df,
@@ -2109,12 +2264,12 @@ class DemandForecastingAgent:
                 )
             )
 
-        # ========================================================
-        # CUSTOMER PATTERN OUTPUT
-        # ========================================================
+        # --------------------------------------------------------
+        # MERGE CUSTOMER PATTERN FEATURES
+        # --------------------------------------------------------
 
-        customer_pattern = (
-            self._get_customer_pattern(
+        customer_pattern_path = (
+            self._get_customer_pattern_features_path(
                 state
             )
         )
@@ -2122,24 +2277,39 @@ class DemandForecastingAgent:
         demand_df = (
             self._add_customer_pattern_features(
                 demand_df,
-                customer_pattern
+                customer_pattern_path
             )
         )
 
-        # ========================================================
-        # FILTER REQUEST
-        # ========================================================
+        required_pattern_features = {
+            "customer_demand_trend",
+            "pattern_strength",
+        }
 
-        demand_df = (
-            self._filter_scope(
-                demand_df,
-                request
-            )
+        missing_pattern_features = (
+            required_pattern_features
+            - set(demand_df.columns)
         )
 
-        # ========================================================
-        # PREPARE MODEL DATA
-        # ========================================================
+        if missing_pattern_features:
+            raise ValueError(
+                "Customer pattern features were not merged into the "
+                "forecast training data: "
+                + ", ".join(
+                    sorted(
+                        missing_pattern_features
+                    )
+                )
+            )
+
+        print(
+            "[DEMAND FORECAST] Customer pattern features loaded: "
+            "customer_demand_trend, pattern_strength"
+        )
+
+        # --------------------------------------------------------
+        # PREPARE COMPLETE MODEL DATA
+        # --------------------------------------------------------
 
         base_data = (
             self._prepare_base_data(
@@ -2160,74 +2330,166 @@ class DemandForecastingAgent:
         )
 
         (
-            model_data,
-            features,
-            encoders
+            prepared_model_data,
+            prepared_features,
+            prepared_encoders
         ) = (
             self._prepare_model_features(
                 feature_data
             )
         )
 
-        if model_data.empty:
-
+        if prepared_model_data.empty:
             raise ValueError(
-                "No data available "
-                "for model training."
+                "No data available for model training."
             )
 
-        # ========================================================
-        # HISTORICAL VALIDATION
-        # ========================================================
+        combination_count = (
+            prepared_model_data[
+                [
+                    "restaurant_id",
+                    "menu_item_id",
+                ]
+            ]
+            .drop_duplicates()
+            .shape[0]
+        )
 
         print(
-            "\nEvaluating model..."
+            "[DEMAND FORECAST] Complete dataset:",
+            f"{len(prepared_model_data):,} rows,",
+            f"{combination_count:,} restaurant/menu-item combinations."
         )
 
-        wmape = (
-            self._evaluate_model(
-                model_data,
-                features,
-                forecast_horizon
+        # --------------------------------------------------------
+        # LOAD PERSISTED MODEL IF IT ALREADY EXISTS
+        # --------------------------------------------------------
+
+        bundle = (
+            self._load_model_bundle(
+                model_path
             )
         )
 
-        if wmape is not None:
+        model_trained = False
+        wmape = None
+
+        if bundle is not None:
+
+            model = bundle.get(
+                "model"
+            )
+
+            features = bundle.get(
+                "features",
+                prepared_features
+            )
+
+            encoders = bundle.get(
+                "encoders",
+                prepared_encoders
+            )
+
+            wmape = bundle.get(
+                "evaluation_wmape"
+            )
+
+            missing_features = [
+                feature
+                for feature in features
+                if feature
+                not in feature_data.columns
+            ]
+
+            if (
+                model is None
+                or missing_features
+            ):
+                bundle = None
+
+        # --------------------------------------------------------
+        # TRAIN ONLY WHEN NO VALID SAVED MODEL EXISTS
+        # --------------------------------------------------------
+
+        if bundle is None:
+
+            model_data = prepared_model_data
+            features = prepared_features
+            encoders = prepared_encoders
 
             print(
-                f"Validation wMAPE: "
-                f"{wmape * 100:.2f}%"
+                "\n[DEMAND FORECAST] No valid saved model found."
+            )
+
+            print(
+                "[DEMAND FORECAST] Evaluating model..."
+            )
+
+            wmape = (
+                self._evaluate_model(
+                    model_data,
+                    features,
+                    forecast_horizon
+                )
+            )
+
+            if wmape is not None:
+                print(
+                    f"Validation wMAPE: "
+                    f"{wmape * 100:.2f}%"
+                )
+            else:
+                print(
+                    "Validation wMAPE: "
+                    "Not enough historical data."
+                )
+
+            print(
+                "[DEMAND FORECAST] Training final model..."
+            )
+
+            model = (
+                self._train_model(
+                    model_data,
+                    features
+                )
+            )
+
+            self._save_model_bundle(
+                model_path=model_path,
+                model=model,
+                features=features,
+                encoders=encoders,
+                evaluation_wmape=wmape,
+            )
+
+            model_trained = True
+
+            print(
+                "[DEMAND FORECAST] Model trained and saved:",
+                str(model_path)
             )
 
         else:
 
             print(
-                "Validation wMAPE: "
-                "Not enough historical data."
+                "[DEMAND FORECAST] Reusing saved model:",
+                str(model_path)
             )
 
-        # ========================================================
-        # TRAIN FINAL MODEL ON ALL HISTORICAL DATA
-        # ========================================================
-
-        print(
-            "Training final demand forecasting model..."
-        )
-
-        model = (
-            self._train_model(
-                model_data,
-                features
+            print(
+                "[DEMAND FORECAST] Model training skipped."
             )
-        )
 
-        print(
-            "Model training completed."
-        )
+            if wmape is not None:
+                print(
+                    f"[DEMAND FORECAST] Saved validation wMAPE: "
+                    f"{float(wmape) * 100:.2f}%"
+                )
 
-        # ========================================================
-        # FUTURE FORECAST
-        # ========================================================
+        # --------------------------------------------------------
+        # GENERATE THIS 7-DAY FORECAST BLOCK
+        # --------------------------------------------------------
 
         future_forecast = (
             self._forecast_future(
@@ -2244,46 +2506,31 @@ class DemandForecastingAgent:
                     encoders,
 
                 forecast_horizon=
-                    forecast_horizon
+                    forecast_horizon,
+
+                forecast_start_date=
+                    forecast_start_date,
             )
         )
 
         if future_forecast.empty:
-
             raise ValueError(
                 "No future forecast was generated."
             )
-
-        # ========================================================
-        # SAVE DETAILED FORECAST
-        # ========================================================
-
-        output_dir = (
-            Path(__file__)
-            .resolve()
-            .parents[2]
-            / "data"
-            / "outputs"
-        )
-
-        output_dir.mkdir(
-            parents=True,
-            exist_ok=True
-        )
-
-        output_path = (
-            output_dir
-            / "demand_forecast.csv"
-        )
 
         future_forecast.to_csv(
             output_path,
             index=False
         )
 
-        # ========================================================
-        # READ GENERATED CSV
-        # ========================================================
+        print(
+            "[DEMAND FORECAST] Weekly forecast saved:",
+            str(output_path)
+        )
+
+        # --------------------------------------------------------
+        # READ STORED FORECAST AND ANSWER USER
+        # --------------------------------------------------------
 
         forecast_data = (
             self._read_forecast_csv(
@@ -2291,43 +2538,31 @@ class DemandForecastingAgent:
             )
         )
 
-        # ========================================================
-        # FORECAST PERIOD
-        # ========================================================
+        if requested_forecast_horizon > forecast_horizon:
 
-        forecast_start = (
-            forecast_data[
-                "date"
-            ]
-            .min()
-            .date()
-        )
+            requested_forecast = {
+                "status": "warning",
+                "message": (
+                    "Demand forecasts are generated in 7-day blocks. "
+                    "A request longer than 7 days is not returned as one "
+                    "forecast because accuracy may decrease."
+                ),
+                "available_forecast_start":
+                    str(forecast_start_date.date()),
+                "available_forecast_end":
+                    str(forecast_end_date.date()),
+            }
 
-        forecast_end = (
-            forecast_data[
-                "date"
-            ]
-            .max()
-            .date()
-        )
+        else:
 
-        # ========================================================
-        # GET USER-REQUESTED FORECAST
-        # ========================================================
-
-        requested_forecast = (
-            self._get_requested_forecast(
-                forecast_data,
-                request
+            requested_forecast = (
+                self._get_requested_forecast(
+                    forecast_data,
+                    request
+                )
             )
-        )
-
-        # ========================================================
-        # RETURN
-        # ========================================================
 
         return {
-
             "status":
                 "success",
 
@@ -2336,14 +2571,43 @@ class DemandForecastingAgent:
 
             "forecast_start":
                 str(
-                    forecast_start
+                    forecast_start_date.date()
                 ),
 
             "forecast_end":
                 str(
-                    forecast_end
+                    forecast_end_date.date()
                 ),
 
+            "output_path":
+                str(
+                    output_path
+                ),
+
+            "model_path":
+                str(
+                    model_path
+                ),
+
+            "model_trained":
+                model_trained,
+
+            "forecast_generated":
+                True,
+
+            "evaluation": (
+                {
+                    "wmape_percent":
+                        round(
+                            float(wmape) * 100,
+                            2
+                        )
+                }
+                if wmape is not None
+                else {}
+            ),
+
             "result":
-                requested_forecast
+                requested_forecast,
         }
+
