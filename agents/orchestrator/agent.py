@@ -109,6 +109,40 @@ class OrchestratorAgent:
 
             return file.read()
 
+    @staticmethod
+    def _normalize_restaurant_item_pairs(pairs):
+        """Normalize paired restaurant/menu identifiers without losing pairing."""
+        normalized = []
+        for pair in pairs or []:
+            if not isinstance(pair, dict):
+                continue
+
+            restaurant_id = pair.get("restaurant_id")
+            menu_item_id = pair.get("menu_item_id")
+
+            if restaurant_id is not None:
+                value = str(restaurant_id).strip()
+                if value.isdigit():
+                    restaurant_id = f"R{int(value):02d}"
+                elif value.upper().startswith("R") and value[1:].isdigit():
+                    restaurant_id = f"R{int(value[1:]):02d}"
+
+            if menu_item_id is not None:
+                value = str(menu_item_id).strip()
+                if value.isdigit():
+                    menu_item_id = f"M{int(value):02d}"
+                elif value.upper().startswith("M") and value[1:].isdigit():
+                    menu_item_id = f"M{int(value[1:]):02d}"
+
+            normalized.append({
+                "restaurant_id": restaurant_id,
+                "restaurant_name": pair.get("restaurant_name"),
+                "menu_item_id": menu_item_id,
+                "menu_item_name": pair.get("menu_item_name"),
+            })
+
+        return normalized
+
     # ========================================================
     # UNDERSTAND USER QUERY
     # ========================================================
@@ -293,6 +327,24 @@ class OrchestratorAgent:
                     )
 
             # =================================================
+            # NORMALIZE MULTIPLE RESTAURANT IDS
+            # =================================================
+            restaurant_ids = parsed.get("restaurant_ids") or []
+            normalized_restaurant_ids = []
+            for value in restaurant_ids:
+                value = str(value).strip()
+                if value.isdigit():
+                    normalized_restaurant_ids.append(f"R{int(value):02d}")
+                elif value.upper().startswith("R") and value[1:].isdigit():
+                    normalized_restaurant_ids.append(f"R{int(value[1:]):02d}")
+                else:
+                    normalized_restaurant_ids.append(value)
+            parsed["restaurant_ids"] = list(dict.fromkeys(normalized_restaurant_ids))
+            if parsed["restaurant_ids"]:
+                parsed["restaurant_scope"] = "multiple"
+                parsed["restaurant_id"] = None
+
+            # =================================================
             # NORMALIZE MENU ITEM ID
             # =================================================
             #
@@ -358,6 +410,29 @@ class OrchestratorAgent:
                     )
 
             # =================================================
+            # NORMALIZE MULTIPLE MENU ITEM IDS
+            # =================================================
+            menu_item_ids = parsed.get("menu_item_ids") or []
+            normalized_menu_item_ids = []
+            for value in menu_item_ids:
+                value = str(value).strip()
+                if value.isdigit():
+                    normalized_menu_item_ids.append(f"M{int(value):02d}")
+                elif value.upper().startswith("M") and value[1:].isdigit():
+                    normalized_menu_item_ids.append(f"M{int(value[1:]):02d}")
+                else:
+                    normalized_menu_item_ids.append(value)
+            parsed["menu_item_ids"] = list(dict.fromkeys(normalized_menu_item_ids))
+            if parsed["menu_item_ids"]:
+                parsed["menu_item_id"] = None
+
+            parsed["restaurant_item_pairs"] = (
+                self._normalize_restaurant_item_pairs(
+                    parsed.get("restaurant_item_pairs", [])
+                )
+            )
+
+            # =================================================
             # RETURN PARSED QUERY
             # =================================================
 
@@ -382,6 +457,9 @@ class OrchestratorAgent:
                         "restaurant_id"
                     ),
 
+                "restaurant_ids":
+                    parsed.get("restaurant_ids", []),
+
                 "restaurant_name":
                     parsed.get(
                         "restaurant_name"
@@ -405,9 +483,18 @@ class OrchestratorAgent:
                         "menu_item_id"
                     ),
 
+                "menu_item_ids":
+                    parsed.get("menu_item_ids", []),
+
                 "menu_item_name":
                     parsed.get(
                         "menu_item_name"
+                    ),
+
+                "restaurant_item_pairs":
+                    parsed.get(
+                        "restaurant_item_pairs",
+                        []
                     ),
 
                 "time_period":
@@ -451,6 +538,8 @@ class OrchestratorAgent:
                 "restaurant_id":
                     None,
 
+                "restaurant_ids": [],
+
                 "restaurant_name":
                     None,
 
@@ -460,8 +549,13 @@ class OrchestratorAgent:
                 "menu_item_id":
                     None,
 
+                "menu_item_ids": [],
+
                 "menu_item_name":
                     None,
+
+                "restaurant_item_pairs":
+                    [],
 
                 "time_period":
                     None,
@@ -682,10 +776,23 @@ class OrchestratorAgent:
 
                 or
 
+                bool(conversation.get("restaurant_ids"))
+
+                or
+
                 conversation.get(
                     "restaurant_name"
                 )
                 is not None
+
+                or
+
+                bool(
+                    conversation.get(
+                        "restaurant_item_pairs",
+                        []
+                    )
+                )
             )
 
               if not available:
@@ -709,10 +816,23 @@ class OrchestratorAgent:
 
                     or
 
+                    bool(conversation.get("menu_item_ids"))
+
+                    or
+
                     conversation.get(
                         "menu_item_name"
                     )
                     is not None
+
+                    or
+
+                    bool(
+                        conversation.get(
+                            "restaurant_item_pairs",
+                            []
+                        )
+                    )
                 )
 
                 if not available:
@@ -775,6 +895,9 @@ class OrchestratorAgent:
                     "restaurant_id"
                 ),
 
+            "restaurant_ids":
+                data.get("restaurant_ids", []),
+
             "restaurant_name":
                 data.get(
                     "restaurant_name"
@@ -798,9 +921,18 @@ class OrchestratorAgent:
                     "menu_item_id"
                 ),
 
+            "menu_item_ids":
+                data.get("menu_item_ids", []),
+
             "menu_item_name":
                 data.get(
                     "menu_item_name"
+                ),
+
+            "restaurant_item_pairs":
+                data.get(
+                    "restaurant_item_pairs",
+                    []
                 ),
 
             "time_period":

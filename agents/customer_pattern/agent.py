@@ -212,8 +212,9 @@ def load_sales_data(state):
     Priority:
 
     1. sales_data already available in state
-    2. CSV path provided in request
-    3. Default project CSV
+    2. unified_demand_path from shared context
+    3. CSV path provided in request
+    4. Default project CSV
     """
 
     request = state.get(
@@ -234,7 +235,28 @@ def load_sales_data(state):
         return sales_data
 
     # --------------------------------------------------------
-    # Option 2: CSV path provided in request
+    # Option 2: Unified demand path from shared context
+    # --------------------------------------------------------
+
+    unified_demand_path = (
+        state.get("shared_context", {})
+        .get("data", {})
+        .get("unified_demand_path")
+    )
+
+    if unified_demand_path:
+
+        path = Path(unified_demand_path)
+
+        if path.exists():
+
+            return pd.read_csv(
+                path,
+                low_memory=False
+            )
+
+    # --------------------------------------------------------
+    # Option 3: CSV path provided in request
     # --------------------------------------------------------
 
     sales_data_path = request.get(
@@ -532,6 +554,7 @@ def analyze_all_items(
 
     return {
         "patterns_file": "data/customer_patterns.csv",
+        "output_path": str(output_path.resolve()),
         "pattern_count": len(patterns)
     }
 

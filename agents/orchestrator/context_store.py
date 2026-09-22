@@ -29,6 +29,7 @@ class ContextStore:
             "required_capabilities": [],
 
             "restaurant_id": None,
+            "restaurant_ids": [],
             "restaurant_name": None,
             "restaurant_scope": None,
 
@@ -36,7 +37,9 @@ class ContextStore:
             "special_event_name": None,
 
             "menu_item_id": None,
+            "menu_item_ids": [],
             "menu_item_name": None,
+            "restaurant_item_pairs": [],
 
             "time_period": None,
             "forecast_horizon": None,
@@ -75,6 +78,9 @@ class ContextStore:
             # Do not overwrite existing information
             # with None
             if value is None:
+                continue
+
+            if key in {"restaurant_ids", "menu_item_ids"} and value == []:
                 continue
 
             # Parameter-only follow-up responses may
@@ -217,7 +223,11 @@ class ContextStore:
 
                     # Context-enhanced dataset generated
                     # by Context / Seasonality
-                    "context_features_path": None
+                    "context_features_path": None,
+
+                    # Customer-pattern feature file generated
+                    # by Customer Pattern Agent
+                    "customer_pattern_features_path": None
                 },
 
                 # ---------------------------------------------
@@ -238,7 +248,29 @@ class ContextStore:
                 # CUSTOMER PATTERN OUTPUT
                 # ---------------------------------------------
 
-                "customer_pattern": None
+                "customer_pattern": None,
+
+                # ---------------------------------------------
+                # DEMAND FORECAST OUTPUT
+                # ---------------------------------------------
+
+                "forecast": {
+                    "output_path": None,
+                    "forecast_horizon": None,
+                    "forecast_start": None,
+                    "forecast_end": None
+                },
+
+                # ---------------------------------------------
+                # INVENTORY DECISION OUTPUT
+                # ---------------------------------------------
+
+                "inventory": {
+                    "output_path": None,
+                    "forecast_horizon_days": None,
+                    "orders_recommended": None,
+                    "stockout_risk_counts": {}
+                }
             },
 
             # ------------------------------------------------
