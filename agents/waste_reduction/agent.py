@@ -52,7 +52,7 @@ OUTPUT_FILE = "data/waste_reduction.csv"
 
 # Expiry thresholds are deliberately explicit so they can be changed
 # without changing the rest of the agent.
-CRITICAL_DAYS = 2
+CRITICAL_DAYS = 1
 HIGH_DAYS = 4
 MEDIUM_DAYS = 7
 
@@ -607,6 +607,13 @@ def analyze_inventory_row(
         0
     )
 
+    # Inventory Decision output may already contain a forecast-adjusted
+    # ingredient usage rate. Prefer it when it is present and positive.
+    forecast_avg_daily_usage = _safe_float(
+        row.get("forecast_avg_daily_usage"),
+        0
+    )
+
     # Do not let "days until expiry" become negative for demand
     # consumption calculations.
     usable_days = max(days_to_expiry, 0)
@@ -659,14 +666,30 @@ def analyze_inventory_row(
         demand_source = "demand_forecasting_agent"
 
     else:
-        # Current inventory data has avg_daily_usage but no menu-item/
-        # ingredient mapping. This is an operational fallback, not a
-        # fabricated forecast.
-        forecast_daily_demand = avg_daily_usage
-        expected_demand_until_expiry = (
-            avg_daily_usage * usable_days
-        )
-        demand_source = "inventory_avg_daily_usage"
+        # If the Inventory Decision Agent has already produced an
+        # ingredient-level forecast usage rate, use it directly. This avoids
+        # treating menu-item quantities as ingredient quantities.
+        if forecast_avg_daily_usage > 0:
+            forecast_daily_demand = forecast_avg_daily_usage
+            expected_demand_until_expiry = (
+                forecast_avg_daily_usage * usable_days
+            )
+            forecast_horizon = int(_safe_float(
+                row.get("forecast_horizon_days"), 0
+            )) or None
+            forecasted_demand = (
+                _safe_float(row.get("forecast_period_demand"), 0)
+                or None
+            )
+            demand_source = "inventory_decision_forecast"
+            forecast_match_status = "ingredient_level_inventory_decision"
+        else:
+            # Operational fallback when no ingredient-level forecast exists.
+            forecast_daily_demand = avg_daily_usage
+            expected_demand_until_expiry = (
+                avg_daily_usage * usable_days
+            )
+            demand_source = "inventory_avg_daily_usage"
 
     (
         waste_risk,
@@ -730,6 +753,9 @@ def analyze_inventory_row(
         "supplier_name": row.get("supplier_name"),
         "storage_type": row.get("storage_type"),
         "batch_id": row.get("batch_id"),
+        "projected_ending_stock": row.get("projected_ending_stock"),
+        "stockout_risk": row.get("stockout_risk"),
+        "order_required": row.get("order_required"),
     }
 
 
@@ -818,7 +844,16 @@ def agent(state):
 
     records = []
 
+    # Waste-reduction scope: only inventory expiring in the next 1 to 3 days.
+    # Already-expired items (negative days), items expiring today (0 days),
+    # and items more than 3 days from expiry are excluded from this analysis.
     for _, row in scoped_inventory.iterrows():
+        expiry_date = pd.Timestamp(row["expiry_date"]).normalize()
+        days_to_expiry = int((expiry_date - analysis_date).days)
+
+        if not (1 <= days_to_expiry <= 3):
+            continue
+
         records.append(
             analyze_inventory_row(
                 row=row,
@@ -830,6 +865,28 @@ def agent(state):
         )
 
     result_df = pd.DataFrame(records)
+
+    # Keep dataset-level handling safe when no inventory item falls inside
+    # the 1-to-3-day expiry window.
+    if result_df.empty:
+        output_path = _resolve_path(
+            request.get("waste_reduction_output_path"),
+            OUTPUT_FILE,
+        )
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame().to_csv(output_path, index=False)
+
+        return {
+            "analysis_type": "dataset_waste_reduction",
+            "analysis_date": analysis_date.strftime("%Y-%m-%d"),
+            "waste_risk_file": str(output_path),
+            "total_inventory_items_analyzed": 0,
+            "products_at_risk": 0,
+            "critical_or_high_risk_items": 0,
+            "promotion_recommended_items": 0,
+            "items": [],
+            "message": "No inventory items expire within the next 1 to 3 days.",
+        }
 
     # --------------------------------------------------------
     # Determine whether this is a single-item request
@@ -913,6 +970,9 @@ def agent(state):
         "promotion_recommended_items": int(
             len(promotions)
         ),
+        # Return the detailed analysis to the orchestrator so the user gets
+        # the requested answer directly instead of only a CSV path.
+        "items": result_df.to_dict(orient="records"),
     }
 
 
