@@ -1,186 +1,96 @@
 ingredient_id,ingredient_name,category,unit,current_stock,reorder_level,reorder_quantity,safety_stock,avg_daily_usage,days_of_cover,lead_time_days,supplier_id,supplier_name,unit_cost_sgd,storage_type,batch_id,received_date,expiry_date,shelf_life_days,stock_status,expiry_risk,last_updated
-ING001,Anchovies,Protein,kg,198.7,60.4,89.5,47.6,12.78,15.5,1,SUP03,Harbour Cold Chain,17.09,Frozen,BATCH-088-A,05/10/26,10/11/26,36,Overstock,Medium,29/09/26
-ING002,Apple Pie Slice,Bakery,pack,4.5,7.0,10.9,4.1,1.45,3.1,2,SUP01,FreshLink SG,1.21,Ambient,BATCH-001-A,30/09/26,16/10/26,16,Low,Medium,29/09/26
-ING003,BBQ Sauce Portion,Sauces & Condiments,L,30.5,21.5,16.8,7.4,2.35,13.0,6,SUP05,Metro Food Supply,6.6,Ambient,BATCH-005-A,04/10/26,11/03/27,158,Healthy,Low,29/09/26
-ING004,Bacon Portion,Protein,kg,31.8,50.0,56.2,33.9,8.03,4.0,2,SUP01,FreshLink SG,0.83,Frozen,BATCH-004-A,18/10/26,25/01/27,99,Low,Low,29/09/26
-ING005,Bacon Strip,Protein,kg,18.0,51.2,94.6,18.3,6.58,2.7,5,SUP05,Metro Food Supply,6.62,Frozen,BATCH-040-A,04/10/26,06/11/26,33,Critical,Medium,29/09/26
-ING006,Bean Sprouts,Fresh Produce,kg,100.6,40.8,29.1,15.8,4.16,24.2,6,SUP04,PantryPro Distribution,9.26,Chilled,BATCH-079-A,02/10/26,14/10/26,12,Overstock,Medium,29/09/26
-ING007,Beef,Protein,kg,45.7,33.5,23.9,13.0,3.41,13.4,6,SUP01,FreshLink SG,13.73,Frozen,BATCH-007-A,08/10/26,05/03/27,148,Healthy,Low,29/09/26
-ING008,Beef Bacon,Protein,kg,15.9,22.1,19.3,8.3,2.76,5.8,5,SUP03,Harbour Cold Chain,14.59,Frozen,BATCH-008-A,11/10/26,10/02/27,122,Low,Low,29/09/26
-ING009,Beef Patty,Protein,kg,126.3,96.0,84.9,36.2,9.96,12.7,6,SUP03,Harbour Cold Chain,15.05,Frozen,BATCH-003-A,08/10/26,11/11/26,34,Healthy,Medium,29/09/26
-ING010,Beef Rendang,Protein,kg,124.7,40.2,70.1,20.2,10.02,12.4,2,SUP04,PantryPro Distribution,5.89,Frozen,BATCH-069-A,30/09/26,05/11/26,36,Overstock,Medium,29/09/26
-ING011,Black Pepper,Dry/Frozen Goods,pack,218.1,75.6,63.2,21.4,9.03,24.2,6,SUP02,Lion City Foods,12.77,Ambient,BATCH-010-A,11/10/26,06/04/27,177,Overstock,Low,29/09/26
-ING012,Black Pepper Sauce,Sauce/Condiment,liter,27.0,11.0,10.5,6.5,1.5,18.0,3,SUP03,Harbour Cold Chain,6.59,Ambient,BATCH-011-A,11/10/26,21/12/26,71,Overstock,Low,29/09/26
-ING013,Black Tea,Beverage,unit,183.1,112.6,119.2,44.5,17.03,10.8,4,SUP01,FreshLink SG,3.1,Ambient,BATCH-046-A,03/10/26,03/05/27,212,Healthy,Low,29/09/26
-ING014,Black Tea Portion,Beverage,pack,157.9,98.9,58.6,40.3,8.37,18.9,7,SUP05,Island Ingredients,4.19,Ambient,BATCH-013-A,12/10/26,19/01/27,99,Healthy,Low,29/09/26
-ING015,Bottled Water,Beverage,unit,218.7,72.8,56.2,24.6,8.03,27.2,6,SUP04,PantryPro Distribution,1.14,Ambient,BATCH-009-A,09/10/26,18/05/27,221,Overstock,Low,29/09/26
-ING016,Breakfast Sandwich Bun,Bakery,pack,61.2,38.3,26.4,11.9,3.77,16.2,7,SUP01,FreshLink SG,1.98,Ambient,BATCH-016-A,06/10/26,22/10/26,16,Healthy,Medium,29/09/26
-ING017,Brewed Coffee Portion,Beverage,pack,40.1,56.4,32.0,19.8,4.57,8.8,8,SUP03,Harbour Cold Chain,4.06,Ambient,BATCH-016-A,18/10/26,19/05/27,213,Low,Low,29/09/26
-ING018,Brownie,Bakery,pack,137.9,49.1,37.0,22.7,5.29,26.1,5,SUP04,PantryPro Distribution,4.76,Ambient,BATCH-019-A,30/09/26,14/10/26,14,Overstock,Medium,29/09/26
-ING019,Buffalo Sauce Portion,Sauces & Condiments,L,39.4,42.8,54.8,7.3,3.55,11.1,10,SUP01,FreshLink SG,3.4,Ambient,BATCH-021-A,03/10/26,15/02/27,135,Low,Low,29/09/26
-ING020,Burger Bun,Bakery,pack,8.9,13.8,21.5,3.4,1.48,6.0,7,SUP02,Lion City Foods,3.44,Ambient,BATCH-002-A,08/10/26,20/10/26,12,Low,Medium,29/09/26
-ING021,Burger Sauce Portion,Sauce/Condiment,liter,53.6,67.3,45.4,21.9,6.49,8.3,7,SUP03,Harbour Cold Chain,4.18,Ambient,BATCH-020-A,18/10/26,27/02/27,132,Low,Low,29/09/26
-ING022,Butter,Dairy,pack,132.8,113.5,83.8,41.7,11.97,11.1,6,SUP04,Metro Food Supply,7.05,Chilled,BATCH-021-A,19/10/26,31/10/26,12,Healthy,Medium,29/09/26
-ING023,Butter Portion,Dairy & Chilled,kg,167.4,61.5,46.1,15.4,6.58,25.4,7,SUP03,Harbour Cold Chain,17.28,Chilled,BATCH-018-A,06/10/26,20/10/26,14,Overstock,Medium,29/09/26
-ING024,Caesar Dressing,Sauces & Condiments,L,49.4,39.8,38.2,14.8,4.17,11.8,6,SUP05,Metro Food Supply,7.74,Ambient,BATCH-025-A,02/10/26,03/02/27,124,Healthy,Low,29/09/26
-ING025,Caesar Dressing Portion,Sauce/Condiment,liter,118.9,104.7,83.7,32.9,11.96,9.9,6,SUP03,Harbour Cold Chain,2.27,Ambient,BATCH-023-A,08/10/26,22/05/27,226,Healthy,Low,29/09/26
-ING026,Carbonated Water,Beverage,unit,184.1,80.7,134.3,42.3,19.19,9.6,2,SUP03,Harbour Cold Chain,1.36,Ambient,BATCH-038-A,02/10/26,25/04/27,205,Overstock,Low,29/09/26
-ING027,Carbonated Water Portion,Beverage,pack,65.7,40.5,40.5,11.6,5.78,11.4,5,SUP03,Harbour Cold Chain,15.2,Ambient,BATCH-024-A,03/10/26,11/04/27,190,Healthy,Low,29/09/26
-ING028,Cheese,Dairy,pack,52.0,35.9,46.1,16.2,6.58,7.9,3,SUP01,FreshLink SG,2.28,Chilled,BATCH-025-A,10/10/26,04/11/26,25,Healthy,Medium,29/09/26
-ING029,Cheese Portion,Dairy & Chilled,kg,82.0,65.2,61.4,32.3,8.22,10.0,4,SUP03,Harbour Cold Chain,14.05,Chilled,BATCH-013-A,01/10/26,16/10/26,15,Healthy,Medium,29/09/26
-ING030,Cheese Sauce Portion,Dairy,pack,49.5,62.0,34.9,22.1,4.99,9.9,8,SUP05,Island Ingredients,13.86,Chilled,BATCH-027-A,02/10/26,05/11/26,34,Low,Medium,29/09/26
-ING031,Cheese Slice,Dairy & Chilled,kg,37.7,25.7,51.6,18.3,7.37,5.1,1,SUP04,PantryPro Distribution,5.84,Chilled,BATCH-004-A,03/10/26,18/10/26,15,Healthy,Medium,29/09/26
-ING032,Chicken,Protein,kg,19.3,23.8,16.9,11.7,2.41,8.0,5,SUP03,Harbour Cold Chain,7.36,Frozen,BATCH-029-A,06/10/26,19/02/27,136,Low,Low,29/09/26
-ING033,Chicken Nugget,Protein,kg,80.0,61.4,58.7,27.8,8.39,9.5,4,SUP02,Lion City Foods,0.43,Frozen,BATCH-030-A,07/10/26,04/02/27,120,Healthy,Low,29/09/26
-ING034,Chicken Nuggets,Protein,kg,90.9,78.7,82.2,33.8,8.98,10.1,5,SUP01,FreshLink SG,6.05,Frozen,BATCH-026-A,09/10/26,08/11/26,30,Healthy,Medium,29/09/26
-ING035,Chicken Tender Portion,Protein,kg,27.0,71.2,129.6,23.5,9.54,2.8,5,SUP05,Metro Food Supply,16.74,Frozen,BATCH-020-A,07/10/26,14/11/26,38,Low,Low,29/09/26
-ING036,Chicken Thigh,Protein,kg,110.0,41.2,61.5,23.6,8.79,12.5,2,SUP02,Lion City Foods,13.1,Frozen,BATCH-032-A,06/10/26,28/01/27,114,Overstock,Low,29/09/26
-ING037,Chili,Dry Goods,kg,37.9,28.5,62.0,19.6,8.86,4.3,1,SUP02,Lion City Foods,5.82,Ambient,BATCH-027-A,09/10/26,08/05/27,211,Healthy,Low,29/09/26
-ING038,Chili Portion,Sauce/Condiment,liter,113.3,100.9,75.0,36.6,10.71,10.6,6,SUP04,Metro Food Supply,15.59,Ambient,BATCH-034-A,13/10/26,25/02/27,135,Healthy,Low,29/09/26
-ING039,Chili Sauce,Sauce/Condiment,liter,5.9,19.1,13.2,7.9,1.6,3.7,7,SUP04,Metro Food Supply,2.78,Ambient,BATCH-035-A,06/10/26,22/03/27,167,Critical,Low,29/09/26
-ING040,Chives,Fresh Produce,kg,6.7,17.1,30.9,13.7,3.41,2.0,1,SUP05,Metro Food Supply,16.75,Chilled,BATCH-080-A,01/10/26,14/10/26,13,Critical,Medium,29/09/26
-ING041,Chocolate Chip Cookie,Bakery,pack,94.6,32.7,30.0,19.9,4.28,22.1,3,SUP03,Harbour Cold Chain,4.6,Ambient,BATCH-028-A,02/10/26,17/10/26,15,Overstock,Medium,29/09/26
-ING042,Chocolate Syrup Portion,Sauce/Condiment,liter,48.0,23.4,21.1,8.3,3.02,15.9,5,SUP01,FreshLink SG,16.7,Ambient,BATCH-038-A,17/10/26,19/11/26,33,Overstock,Low,29/09/26
-ING043,Cockles,Dry/Frozen Goods,pack,75.5,64.3,72.4,33.3,10.34,7.3,3,SUP04,Metro Food Supply,5.35,Ambient,BATCH-039-A,12/10/26,17/01/27,97,Healthy,Low,29/09/26
-ING044,Coconut Milk,Dairy & Chilled,kg,15.2,92.0,187.2,31.0,8.72,1.7,7,SUP05,Metro Food Supply,9.58,Chilled,BATCH-070-A,02/10/26,16/10/26,14,Critical,Medium,29/09/26
-ING045,Coffee Beans,Fresh Produce,kg,21.0,24.1,40.0,12.7,5.71,3.7,2,SUP02,Lion City Foods,3.28,Chilled,BATCH-032-A,07/10/26,17/10/26,10,Low,Medium,29/09/26
-ING046,Coleslaw,Dry Goods,kg,222.7,120.7,60.8,42.6,8.68,25.7,9,SUP03,Harbour Cold Chain,8.8,Ambient,BATCH-033-A,02/10/26,10/04/27,190,Healthy,Low,29/09/26
-ING047,Coleslaw Portion,Dry/Frozen Goods,pack,132.1,103.8,60.6,43.2,8.66,15.3,7,SUP05,Island Ingredients,1.38,Ambient,BATCH-042-A,18/10/26,24/05/27,218,Healthy,Low,29/09/26
-ING048,Condensed Milk,Dairy & Chilled,kg,68.8,38.8,28.4,18.5,4.06,16.9,5,SUP04,PantryPro Distribution,16.17,Chilled,BATCH-094-A,30/09/26,16/10/26,16,Healthy,Medium,29/09/26
-ING049,Cream,Dairy,liter,45.3,25.6,31.2,16.7,4.45,10.2,2,SUP05,Island Ingredients,1.5,Chilled,BATCH-044-A,05/10/26,17/10/26,12,Healthy,Medium,29/09/26
-ING050,Crispy Chicken Patty,Protein,kg,151.6,51.5,41.1,22.2,5.87,25.8,5,SUP04,PantryPro Distribution,11.55,Frozen,BATCH-039-A,05/10/26,14/11/26,40,Overstock,Low,29/09/26
-ING051,Crouton Portion,Dry/Frozen Goods,pack,116.8,77.1,73.4,24.7,10.48,11.1,5,SUP05,Island Ingredients,5.9,Ambient,BATCH-046-A,18/10/26,10/04/27,174,Healthy,Low,29/09/26
-ING052,Croutons,Dry Goods,kg,129.2,77.5,65.6,40.0,9.37,13.8,4,SUP04,PantryPro Distribution,17.92,Ambient,BATCH-024-A,03/10/26,26/04/27,205,Healthy,Low,29/09/26
-ING053,Cucumber,Fresh Produce,kg,62.8,36.0,33.4,16.9,4.77,13.2,4,SUP05,Metro Food Supply,6.9,Chilled,BATCH-065-A,01/10/26,11/10/26,10,Healthy,High,29/09/26
-ING054,Cucumber Portion,Produce,kg,36.1,43.2,27.1,16.1,3.87,9.3,7,SUP04,Metro Food Supply,11.29,Chilled,BATCH-048-A,02/10/26,12/10/26,10,Low,High,29/09/26
-ING055,Curry,Dry/Frozen Goods,pack,28.2,30.4,50.3,16.0,7.19,3.9,2,SUP02,Lion City Foods,8.06,Ambient,BATCH-049-A,11/10/26,21/01/27,102,Low,Low,29/09/26
-ING056,Curry Sauce,Sauces & Condiments,L,12.0,21.6,35.5,8.6,2.17,5.5,6,SUP01,FreshLink SG,4.14,Ambient,BATCH-091-A,05/10/26,05/03/27,151,Low,Low,29/09/26
-ING057,Egg,Dairy & Chilled,kg,95.9,56.7,56.4,16.4,8.06,11.9,5,SUP02,Lion City Foods,14.14,Chilled,BATCH-017-A,09/10/26,27/10/26,18,Healthy,Medium,29/09/26
-ING058,Eggs,Protein,kg,125.8,54.7,48.9,26.8,6.98,18.0,4,SUP03,Harbour Cold Chain,2.34,Frozen,BATCH-051-A,03/10/26,04/12/26,62,Overstock,Low,29/09/26
-ING059,Evaporated Milk,Dairy & Chilled,kg,69.0,41.8,51.2,27.2,7.32,9.4,2,SUP05,Metro Food Supply,10.16,Chilled,BATCH-095-A,04/10/26,18/10/26,14,Healthy,Medium,29/09/26
-ING060,Fish Broth,Protein,kg,13.3,18.5,15.3,5.4,2.18,6.1,6,SUP03,Harbour Cold Chain,16.32,Frozen,BATCH-053-A,16/10/26,31/01/27,107,Low,Low,29/09/26
-ING061,Fish Fillet,Protein,kg,40.5,59.5,90.4,34.0,8.51,4.8,3,SUP02,Lion City Foods,4.47,Frozen,BATCH-062-A,03/10/26,10/11/26,38,Low,Medium,29/09/26
-ING062,Fish Patty,Protein,kg,69.8,60.8,72.2,40.2,10.31,6.8,2,SUP04,Metro Food Supply,10.06,Frozen,BATCH-054-A,05/10/26,21/02/27,139,Healthy,Low,29/09/26
-ING063,Flat Rice Noodles,Dry Goods,kg,112.9,60.7,37.6,23.1,5.37,21.0,7,SUP02,Lion City Foods,16.15,Ambient,BATCH-077-A,29/09/26,21/05/27,234,Healthy,Low,29/09/26
-ING064,Flour,Dry/Frozen Goods,pack,58.5,24.7,39.9,13.3,5.7,10.3,2,SUP04,Metro Food Supply,2.56,Ambient,BATCH-056-A,17/10/26,23/12/26,67,Overstock,Low,29/09/26
-ING065,Flour Tortilla,Bakery,pack,5.8,20.1,38.4,9.6,3.51,1.7,3,SUP05,Metro Food Supply,1.83,Ambient,BATCH-010-A,03/10/26,19/10/26,16,Critical,Medium,29/09/26
-ING066,Fries,Dry/Frozen Goods,pack,16.6,56.7,40.1,21.6,4.39,3.8,8,SUP05,Island Ingredients,13.57,Ambient,BATCH-058-A,17/10/26,28/02/27,134,Critical,Low,29/09/26
-ING067,Frozen Fries,Frozen,kg,38.1,31.9,32.1,14.2,4.43,8.6,4,SUP04,PantryPro Distribution,17.77,Frozen,BATCH-034-A,05/10/26,02/02/27,120,Healthy,Low,29/09/26
-ING068,Frozen Fries Large Portion,Dry/Frozen Goods,pack,232.3,84.9,78.3,51.4,11.18,20.8,3,SUP04,Metro Food Supply,14.5,Ambient,BATCH-059-A,10/10/26,28/05/27,230,Overstock,Low,29/09/26
-ING069,Frozen Fries Regular Portion,Dry/Frozen Goods,pack,82.8,112.8,73.5,28.8,10.5,7.9,8,SUP04,Metro Food Supply,6.49,Ambient,BATCH-060-A,06/10/26,02/06/27,239,Low,Low,29/09/26
-ING070,Fruit Cup,Fresh Produce,kg,15.8,23.3,35.5,13.8,4.75,3.3,2,SUP01,FreshLink SG,9.6,Chilled,BATCH-041-A,30/09/26,10/10/26,10,Low,High,29/09/26
-ING071,Fruit Portion,Produce,kg,24.3,107.1,82.8,26.9,10.03,2.4,8,SUP05,Island Ingredients,7.37,Chilled,BATCH-061-A,08/10/26,29/10/26,21,Critical,Medium,29/09/26
-ING072,Fruit Topping Portion,Produce,kg,53.1,106.0,82.5,35.3,11.79,4.5,6,SUP05,Island Ingredients,7.99,Chilled,BATCH-062-A,01/10/26,14/10/26,13,Critical,Medium,29/09/26
-ING073,Frying Oil,Sauces & Condiments,L,86.7,63.6,53.2,29.6,6.8,12.8,5,SUP05,Metro Food Supply,4.9,Ambient,BATCH-035-A,07/10/26,07/03/27,151,Healthy,Low,29/09/26
-ING074,Frying Oil Allocation,Sauce/Condiment,liter,134.5,65.8,63.1,29.8,9.01,14.9,4,SUP05,Island Ingredients,16.68,Ambient,BATCH-063-A,13/10/26,12/11/26,30,Overstock,Medium,29/09/26
-ING075,Galangal,Fresh Produce,kg,30.9,39.9,56.9,13.5,3.77,8.2,7,SUP01,FreshLink SG,12.0,Chilled,BATCH-071-A,04/10/26,17/10/26,13,Low,Medium,29/09/26
-ING076,Garlic,Fresh Produce,kg,9.3,16.4,26.8,7.5,2.22,4.2,4,SUP02,Lion City Foods,5.78,Chilled,BATCH-082-A,05/10/26,17/10/26,12,Low,Medium,29/09/26
-ING077,Ghee,Dry Goods,kg,38.9,121.7,228.8,37.1,8.46,4.6,10,SUP05,Metro Food Supply,10.76,Ambient,BATCH-090-A,29/09/26,19/04/27,202,Low,Low,29/09/26
-ING078,Ginger,Produce,kg,144.1,81.8,48.4,33.4,6.92,20.8,7,SUP01,FreshLink SG,13.04,Chilled,BATCH-067-A,19/10/26,08/11/26,20,Healthy,Medium,29/09/26
-ING079,Granola,Dry Goods,kg,112.7,39.0,41.0,27.3,5.86,19.2,2,SUP03,Harbour Cold Chain,8.69,Ambient,BATCH-068-A,05/10/26,04/05/27,211,Overstock,Low,29/09/26
-ING080,Granola Portion,Dry/Frozen Goods,pack,27.3,34.4,30.1,17.2,4.3,6.3,4,SUP02,Lion City Foods,11.19,Ambient,BATCH-068-A,12/10/26,03/05/27,203,Low,Low,29/09/26
-ING081,Grass Jelly,Dry Goods,kg,93.1,77.1,76.5,20.1,7.13,13.1,8,SUP04,PantryPro Distribution,6.71,Ambient,BATCH-074-A,03/10/26,16/04/27,195,Healthy,Low,29/09/26
-ING082,Green Beans,Fresh Produce,kg,34.0,24.9,29.1,8.3,4.16,8.2,4,SUP04,PantryPro Distribution,9.71,Chilled,BATCH-064-A,05/10/26,17/10/26,12,Healthy,Medium,29/09/26
-ING083,Grilled Chicken Portion,Protein,kg,70.0,94.1,137.0,29.3,12.96,5.4,5,SUP02,Lion City Foods,14.37,Frozen,BATCH-022-A,30/09/26,07/11/26,38,Low,Medium,29/09/26
-ING084,Hash Brown Patty,Protein,kg,39.6,45.3,30.2,19.4,4.31,9.2,6,SUP02,Lion City Foods,9.35,Frozen,BATCH-070-A,14/10/26,23/01/27,101,Low,Low,29/09/26
-ING085,Hash Browns,Frozen,kg,127.3,72.2,56.0,16.2,8.0,15.9,7,SUP04,PantryPro Distribution,17.05,Frozen,BATCH-044-A,03/10/26,06/02/27,126,Healthy,Low,29/09/26
-ING086,Ice Cream Cone,Dairy,liter,179.8,118.7,68.1,40.9,9.73,18.5,8,SUP03,Harbour Cold Chain,4.28,Chilled,BATCH-071-A,07/10/26,07/11/26,31,Healthy,Medium,29/09/26
-ING087,Ice Portion,Dry/Frozen Goods,pack,38.1,13.2,22.3,6.8,3.19,11.9,2,SUP04,Metro Food Supply,9.05,Ambient,BATCH-072-A,18/10/26,05/01/27,79,Overstock,Low,29/09/26
-ING088,Iced Tea,Beverage,unit,126.6,74.2,67.8,45.2,9.68,13.1,3,SUP05,Metro Food Supply,2.12,Ambient,BATCH-045-A,01/10/26,16/04/27,197,Healthy,Low,29/09/26
-ING089,Jalapeno,Fresh Produce,kg,180.6,56.4,40.9,21.3,5.85,30.9,6,SUP04,PantryPro Distribution,9.16,Chilled,BATCH-049-A,08/10/26,19/10/26,11,Overstock,Medium,29/09/26
-ING090,Jalapeno Portion,Produce,kg,66.7,40.8,25.8,15.0,3.68,18.1,7,SUP01,FreshLink SG,10.17,Chilled,BATCH-073-A,16/10/26,09/11/26,24,Healthy,Medium,29/09/26
-ING091,Kaya,Dry/Frozen Goods,pack,89.2,59.6,77.6,37.4,11.09,8.0,2,SUP05,Island Ingredients,7.85,Ambient,BATCH-074-A,14/10/26,18/04/27,186,Healthy,Low,29/09/26
-ING092,Ketchup,Sauces & Condiments,L,5.8,32.3,65.3,26.9,5.44,1.1,1,SUP05,Metro Food Supply,14.91,Ambient,BATCH-030-A,05/10/26,23/02/27,141,Critical,Low,29/09/26
-ING093,Ketchup Portion,Sauce/Condiment,liter,131.4,106.4,76.9,51.5,10.98,12.0,5,SUP02,Lion City Foods,5.16,Ambient,BATCH-075-A,16/10/26,19/03/27,154,Healthy,Low,29/09/26
-ING094,Laksa Broth,Sauces & Condiments,L,42.0,22.1,13.3,6.9,1.9,22.1,8,SUP04,PantryPro Distribution,12.58,Ambient,BATCH-084-A,04/10/26,15/02/27,134,Healthy,Low,29/09/26
-ING095,Lemon,Produce,kg,7.8,12.4,13.0,5.0,1.85,4.2,4,SUP02,Lion City Foods,1.44,Chilled,BATCH-076-A,04/10/26,05/11/26,32,Low,Medium,29/09/26
-ING096,Lemonade Beverage Portion,Produce,kg,24.9,51.5,38.4,18.6,5.48,4.5,6,SUP05,Island Ingredients,7.03,Chilled,BATCH-077-A,30/09/26,03/11/26,34,Critical,Medium,29/09/26
-ING097,Lemonade Syrup,Sauces & Condiments,L,13.3,9.8,16.1,7.5,2.3,5.8,1,SUP02,Lion City Foods,14.45,Ambient,BATCH-047-A,29/09/26,17/02/27,141,Healthy,Low,29/09/26
-ING098,Lemongrass,Fresh Produce,kg,49.0,53.7,69.1,19.0,5.79,8.5,6,SUP02,Lion City Foods,14.03,Chilled,BATCH-072-A,06/10/26,17/10/26,11,Low,Medium,29/09/26
-ING099,Lettuce Portion,Fresh Produce,kg,75.3,53.0,41.3,21.2,4.55,16.5,7,SUP02,Lion City Foods,3.21,Chilled,BATCH-007-A,02/10/26,12/10/26,10,Healthy,High,29/09/26
-ING100,Macaroni,Dry Goods,kg,69.4,79.4,105.3,43.8,8.89,7.8,4,SUP02,Lion City Foods,5.28,Ambient,BATCH-052-A,05/10/26,04/04/27,181,Low,Low,29/09/26
-ING101,Macaroni Portion,Dry/Frozen Goods,pack,10.6,7.3,7.4,3.1,1.06,10.0,4,SUP04,Metro Food Supply,4.18,Ambient,BATCH-080-A,19/10/26,13/01/27,86,Healthy,Low,29/09/26
-ING102,Marinara Sauce,Sauces & Condiments,L,71.9,39.8,25.1,7.5,3.59,20.0,9,SUP02,Lion City Foods,11.5,Ambient,BATCH-057-A,03/10/26,11/02/27,131,Healthy,Low,29/09/26
-ING103,Marinara Sauce Portion,Sauce/Condiment,liter,50.2,29.9,40.5,18.3,5.79,8.7,2,SUP01,FreshLink SG,16.35,Ambient,BATCH-081-A,19/10/26,03/04/27,166,Healthy,Low,29/09/26
-ING104,Milk,Dairy & Chilled,kg,77.7,47.0,52.7,24.4,7.53,10.3,3,SUP03,Harbour Cold Chain,4.97,Chilled,BATCH-053-A,02/10/26,18/10/26,16,Healthy,Medium,29/09/26
-ING105,Mint,Fresh Produce,kg,30.7,16.5,26.7,8.9,3.81,8.1,2,SUP01,FreshLink SG,14.39,Chilled,BATCH-086-A,06/10/26,18/10/26,12,Healthy,Medium,29/09/26
-ING106,Mixed Fruit Portion,Produce,kg,74.2,68.2,52.6,15.6,7.51,9.9,7,SUP03,Harbour Cold Chain,6.27,Chilled,BATCH-083-A,06/10/26,30/10/26,24,Healthy,Medium,29/09/26
-ING107,Mixed Greens,Fresh Produce,kg,28.8,45.3,70.9,13.9,6.28,4.6,5,SUP02,Lion City Foods,16.97,Chilled,BATCH-042-A,03/10/26,14/10/26,11,Low,Medium,29/09/26
-ING108,Mixed Greens Portion,Produce,kg,93.9,88.2,74.8,45.5,10.68,8.8,4,SUP01,FreshLink SG,14.13,Chilled,BATCH-084-A,11/10/26,28/10/26,17,Healthy,Medium,29/09/26
-ING109,Mozzarella,Dry Goods,kg,76.2,46.7,67.5,27.4,9.65,7.9,2,SUP01,FreshLink SG,17.71,Ambient,BATCH-056-A,05/10/26,16/05/27,223,Healthy,Low,29/09/26
-ING110,Mozzarella Stick Portion,Dry/Frozen Goods,pack,67.4,82.5,57.2,17.1,8.17,8.2,8,SUP02,Lion City Foods,8.53,Ambient,BATCH-085-A,03/10/26,26/03/27,174,Low,Low,29/09/26
-ING111,Mushroom,Fresh Produce,kg,31.4,12.0,12.3,6.7,1.76,17.8,3,SUP03,Harbour Cold Chain,11.9,Chilled,BATCH-058-A,04/10/26,17/10/26,13,Overstock,Medium,29/09/26
-ING112,Mushroom Portion,Produce,kg,41.4,24.9,26.7,9.6,3.82,10.8,4,SUP01,FreshLink SG,16.74,Chilled,BATCH-086-A,03/10/26,31/10/26,28,Healthy,Medium,29/09/26
-ING113,Mushrooms,Produce,kg,91.2,60.0,51.3,23.4,7.33,12.4,5,SUP05,Island Ingredients,14.56,Chilled,BATCH-087-A,09/10/26,09/11/26,31,Healthy,Medium,29/09/26
-ING114,Mustard,Sauces & Condiments,L,10.5,14.4,22.0,8.1,3.14,3.3,2,SUP01,FreshLink SG,6.82,Ambient,BATCH-031-A,05/10/26,13/02/27,131,Low,Low,29/09/26
-ING115,Mustard Portion,Sauce/Condiment,liter,73.7,101.0,68.3,42.4,9.76,7.6,6,SUP04,Metro Food Supply,2.17,Ambient,BATCH-088-A,13/10/26,10/06/27,240,Low,Low,29/09/26
-ING116,Oatmeal,Dry Goods,kg,110.7,45.6,23.3,15.6,3.33,33.2,9,SUP04,PantryPro Distribution,9.26,Ambient,BATCH-059-A,29/09/26,12/05/27,225,Overstock,Low,29/09/26
-ING117,Oatmeal Portion,Dry/Frozen Goods,pack,194.7,135.1,81.0,54.1,11.57,16.8,7,SUP05,Island Ingredients,14.01,Ambient,BATCH-089-A,19/10/26,12/06/27,236,Healthy,Low,29/09/26
-ING118,Onion,Produce,kg,66.4,74.5,42.8,25.6,6.11,10.9,8,SUP04,Metro Food Supply,10.39,Chilled,BATCH-090-A,07/10/26,10/11/26,34,Low,Medium,29/09/26
-ING119,Onion Portion,Fresh Produce,kg,117.4,36.4,36.6,25.9,5.23,22.4,2,SUP03,Harbour Cold Chain,6.81,Chilled,BATCH-008-A,30/09/26,13/10/26,13,Overstock,High,29/09/26
-ING120,Onion Ring Portion,Produce,kg,83.7,50.8,58.4,17.4,8.35,10.0,4,SUP03,Harbour Cold Chain,10.14,Chilled,BATCH-092-A,19/10/26,20/11/26,32,Healthy,Low,29/09/26
-ING121,Onion Rings,Fresh Produce,kg,18.7,51.2,93.9,21.5,5.95,3.1,5,SUP05,Metro Food Supply,8.15,Chilled,BATCH-060-A,09/10/26,20/10/26,11,Critical,Medium,29/09/26
-ING122,Palm Sugar,Dry Goods,kg,94.9,75.1,70.3,20.4,9.11,10.4,6,SUP05,Metro Food Supply,4.87,Ambient,BATCH-075-A,05/10/26,17/05/27,224,Healthy,Low,29/09/26
-ING123,Pancake,Bakery,pack,55.0,35.1,46.8,15.1,6.68,8.2,3,SUP01,FreshLink SG,1.95,Ambient,BATCH-094-A,15/10/26,08/03/27,144,Healthy,Low,29/09/26
-ING124,Pancake Mix,Dry Goods,kg,51.4,64.3,90.1,45.3,9.52,5.4,2,SUP01,FreshLink SG,4.43,Ambient,BATCH-061-A,09/10/26,31/05/27,234,Low,Low,29/09/26
-ING125,Pancake Syrup Portion,Sauce/Condiment,liter,43.8,33.5,24.1,9.4,3.44,12.7,7,SUP03,Harbour Cold Chain,12.74,Ambient,BATCH-095-A,17/10/26,08/02/27,114,Healthy,Low,29/09/26
-ING126,Parmesan Portion,Dry Goods,kg,73.6,57.8,53.6,35.7,7.37,10.0,3,SUP03,Harbour Cold Chain,11.9,Ambient,BATCH-023-A,07/10/26,30/05/27,235,Healthy,Low,29/09/26
-ING127,Peanuts,Dry Goods,kg,72.6,24.6,21.3,12.4,3.04,23.9,4,SUP04,PantryPro Distribution,14.47,Ambient,BATCH-089-A,30/09/26,12/05/27,224,Overstock,Low,29/09/26
-ING128,Pickle Portion,Dry/Frozen Goods,pack,46.9,26.6,27.9,10.7,3.98,11.8,4,SUP04,Metro Food Supply,5.19,Ambient,BATCH-098-A,06/10/26,30/12/26,85,Healthy,Low,29/09/26
-ING129,Pickle Slice,Dry/Frozen Goods,pack,57.9,86.7,52.4,26.8,7.49,7.7,8,SUP05,Island Ingredients,2.54,Ambient,BATCH-099-A,30/09/26,29/04/27,211,Low,Low,29/09/26
-ING130,Pickles,Dry Goods,kg,66.4,25.3,22.3,12.6,3.18,20.9,4,SUP04,PantryPro Distribution,15.89,Ambient,BATCH-029-A,05/10/26,02/05/27,209,Overstock,Low,29/09/26
-ING131,Potato Bite Portion,Dry/Frozen Goods,pack,12.1,8.5,10.5,5.5,1.5,8.1,2,SUP04,Metro Food Supply,8.77,Ambient,BATCH-100-A,18/10/26,28/01/27,102,Healthy,Low,29/09/26
-ING132,Potato Bites,Frozen,kg,31.7,41.0,58.5,24.8,8.1,3.9,2,SUP01,FreshLink SG,14.12,Frozen,BATCH-051-A,05/10/26,13/03/27,159,Low,Low,29/09/26
-ING133,Prawns,Protein,kg,133.2,50.8,50.6,14.6,7.23,18.4,5,SUP03,Harbour Cold Chain,10.84,Frozen,BATCH-078-A,05/10/26,10/11/26,36,Overstock,Medium,29/09/26
-ING134,Ranch Sauce Portion,Sauces & Condiments,L,49.6,26.4,40.2,20.7,5.74,8.6,1,SUP01,FreshLink SG,11.06,Ambient,BATCH-006-A,05/10/26,07/02/27,125,Healthy,Low,29/09/26
-ING135,Red Beans,Fresh Produce,kg,15.4,9.9,13.2,6.1,1.88,8.2,2,SUP01,FreshLink SG,5.71,Chilled,BATCH-076-A,05/10/26,15/10/26,10,Healthy,Medium,29/09/26
-ING136,Rice,Dry/Frozen Goods,pack,32.1,22.6,33.2,13.1,4.75,6.8,2,SUP02,Lion City Foods,14.66,Ambient,BATCH-104-A,01/10/26,08/12/26,68,Healthy,Low,29/09/26
-ING137,Rice Flour,Dry Goods,kg,127.1,71.4,40.7,24.8,5.82,21.8,8,SUP03,Harbour Cold Chain,14.55,Ambient,BATCH-073-A,03/10/26,20/05/27,229,Healthy,Low,29/09/26
-ING138,Rice Flour Jelly,Dry/Frozen Goods,pack,36.4,79.9,80.1,57.0,11.44,3.2,2,SUP04,Metro Food Supply,16.38,Ambient,BATCH-105-A,16/10/26,20/02/27,127,Critical,Low,29/09/26
-ING139,Rice Noodles,Dry/Frozen Goods,pack,38.1,46.8,29.9,21.2,4.27,8.9,6,SUP02,Lion City Foods,4.98,Ambient,BATCH-106-A,06/10/26,14/04/27,190,Low,Low,29/09/26
-ING140,Salad Dressing Portion,Sauce/Condiment,liter,1.6,10.5,13.2,4.8,1.89,0.8,3,SUP03,Harbour Cold Chain,12.74,Ambient,BATCH-107-A,07/10/26,18/01/27,103,Critical,Low,29/09/26
-ING141,Salsa Portion,Sauces & Condiments,L,28.3,23.9,31.8,10.3,4.55,6.2,3,SUP05,Metro Food Supply,12.23,Ambient,BATCH-015-A,30/09/26,06/02/27,129,Healthy,Low,29/09/26
-ING142,Salt,Dry Goods,kg,50.0,29.4,28.6,8.9,4.09,12.2,5,SUP01,FreshLink SG,7.36,Ambient,BATCH-036-A,29/09/26,14/05/27,227,Healthy,Low,29/09/26
-ING143,Salt Portion,Dry/Frozen Goods,pack,46.9,58.1,41.9,16.2,5.99,7.8,7,SUP02,Lion City Foods,11.76,Ambient,BATCH-109-A,03/10/26,21/03/27,169,Low,Low,29/09/26
-ING144,Sambal,Sauces & Condiments,L,67.6,40.0,35.5,24.8,5.07,13.3,3,SUP02,Lion City Foods,4.18,Ambient,BATCH-087-A,01/10/26,17/02/27,139,Healthy,Low,29/09/26
-ING145,Sandwich Bun,Bakery,pack,53.5,114.6,76.9,26.7,10.99,4.9,8,SUP04,Metro Food Supply,12.49,Ambient,BATCH-111-A,14/10/26,14/12/26,61,Critical,Low,29/09/26
-ING146,Sandwich Sauce Portion,Sauce/Condiment,liter,89.7,65.3,60.9,30.5,8.7,10.3,4,SUP01,FreshLink SG,4.35,Ambient,BATCH-112-A,08/10/26,13/11/26,36,Healthy,Low,29/09/26
-ING147,Sausage Portion,Protein,kg,28.9,32.1,41.7,26.6,5.51,5.2,1,SUP02,Lion City Foods,12.66,Frozen,BATCH-012-A,04/10/26,06/11/26,33,Low,Medium,29/09/26
-ING148,Scrambled Egg Portion,Dairy & Chilled,kg,37.3,58.2,90.7,34.4,7.94,4.7,3,SUP01,FreshLink SG,8.72,Chilled,BATCH-011-A,29/09/26,15/10/26,16,Low,Medium,29/09/26
-ING149,Seasoned Meat Portion,Protein,kg,201.6,98.8,58.9,31.4,8.42,23.9,8,SUP05,Island Ingredients,11.83,Frozen,BATCH-115-A,05/10/26,18/01/27,105,Overstock,Low,29/09/26
-ING150,Seasoned Tortilla Chips,Bakery,pack,50.9,16.7,14.0,6.7,2.0,25.4,5,SUP03,Harbour Cold Chain,1.33,Ambient,BATCH-048-A,07/10/26,19/10/26,12,Overstock,Medium,29/09/26
-ING151,Shrimp Paste,Sauces & Condiments,L,44.7,34.4,41.1,28.5,5.87,7.6,1,SUP05,Metro Food Supply,4.86,Ambient,BATCH-085-A,29/09/26,07/03/27,159,Healthy,Low,29/09/26
-ING152,Soft Drink Syrup,Sauces & Condiments,L,39.9,22.3,34.6,17.4,4.95,8.1,1,SUP02,Lion City Foods,17.39,Ambient,BATCH-037-A,01/10/26,01/02/27,123,Healthy,Low,29/09/26
-ING153,Soft Drink Syrup Large Portion,Sauce/Condiment,liter,124.1,88.5,77.6,55.3,11.08,11.2,3,SUP01,FreshLink SG,15.48,Ambient,BATCH-117-A,10/10/26,29/04/27,201,Healthy,Low,29/09/26
-ING154,Soft Drink Syrup Regular Portion,Sauce/Condiment,liter,52.3,48.5,32.4,16.1,4.63,11.3,7,SUP01,FreshLink SG,17.47,Ambient,BATCH-118-A,08/10/26,28/01/27,112,Healthy,Low,29/09/26
-ING155,Soft-Boiled Eggs,Protein,kg,28.4,57.1,38.1,24.4,5.45,5.2,6,SUP04,Metro Food Supply,11.37,Frozen,BATCH-119-A,19/10/26,09/03/27,141,Critical,Low,29/09/26
-ING156,Sour Cream,Dairy & Chilled,kg,9.6,24.6,44.5,20.3,4.33,2.2,1,SUP05,Metro Food Supply,5.76,Chilled,BATCH-050-A,29/09/26,15/10/26,16,Critical,Medium,29/09/26
-ING157,Sour Cream Portion,Dairy,liter,49.3,54.3,65.5,26.2,9.36,5.3,3,SUP02,Lion City Foods,12.86,Chilled,BATCH-120-A,19/10/26,23/11/26,35,Low,Low,29/09/26
-ING158,Soy Sauce,Sauces & Condiments,L,54.2,68.9,97.4,22.1,4.68,11.6,10,SUP01,FreshLink SG,3.8,Ambient,BATCH-081-A,09/10/26,07/02/27,121,Low,Low,29/09/26
-ING159,Spaghetti,Dry Goods,kg,62.8,75.4,103.1,32.3,7.19,8.7,6,SUP02,Lion City Foods,13.87,Ambient,BATCH-092-A,05/10/26,14/04/27,191,Low,Low,29/09/26
-ING160,Spices,Dry/Frozen Goods,pack,13.7,25.0,30.9,16.2,4.42,3.1,2,SUP03,Harbour Cold Chain,9.31,Ambient,BATCH-123-A,04/10/26,10/03/27,157,Critical,Low,29/09/26
-ING161,Spicy Sauce Portion,Sauce/Condiment,liter,54.8,45.9,28.1,13.8,4.01,13.7,8,SUP03,Harbour Cold Chain,13.98,Ambient,BATCH-124-A,04/10/26,20/11/26,47,Healthy,Low,29/09/26
-ING162,Sugar Syrup,Sauce/Condiment,liter,116.6,91.5,72.8,49.9,10.4,11.2,4,SUP04,Metro Food Supply,9.83,Ambient,BATCH-125-A,15/10/26,22/12/26,68,Healthy,Low,29/09/26
-ING163,Sundae Topping Portion,Dry/Frozen Goods,pack,88.2,49.4,33.6,20.6,4.8,18.4,6,SUP04,Metro Food Supply,1.07,Ambient,BATCH-126-A,12/10/26,09/01/27,89,Healthy,Low,29/09/26
-ING164,Swiss Cheese Slice,Dairy,pack,166.1,107.9,64.3,43.6,9.19,18.1,7,SUP05,Island Ingredients,17.39,Chilled,BATCH-127-A,01/10/26,15/10/26,14,Healthy,Medium,29/09/26
-ING165,Tamarind,Dry/Frozen Goods,pack,49.0,30.8,32.6,21.5,4.65,10.5,2,SUP04,Metro Food Supply,14.13,Ambient,BATCH-128-A,04/10/26,22/11/26,49,Healthy,Low,29/09/26
-ING166,Tandoori Masala,Dry Goods,kg,119.1,68.8,49.4,33.5,7.05,16.9,5,SUP03,Harbour Cold Chain,15.3,Ambient,BATCH-093-A,06/10/26,01/05/27,207,Healthy,Low,29/09/26
-ING167,Tartar Sauce,Sauces & Condiments,L,93.4,54.6,37.7,16.9,5.39,17.3,7,SUP03,Harbour Cold Chain,11.32,Ambient,BATCH-063-A,01/10/26,09/03/27,159,Healthy,Low,29/09/26
-ING168,Tartar Sauce Portion,Sauce/Condiment,liter,66.9,39.5,27.4,16.0,3.92,17.1,6,SUP04,Metro Food Supply,15.74,Ambient,BATCH-130-A,10/10/26,18/04/27,190,Healthy,Low,29/09/26
-ING169,Tomato,Fresh Produce,kg,29.8,23.5,40.1,17.8,5.73,5.2,1,SUP03,Harbour Cold Chain,11.98,Chilled,BATCH-043-A,07/10/26,19/10/26,12,Healthy,Medium,29/09/26
-ING170,Tomato Portion,Produce,kg,7.4,6.6,9.7,3.8,1.39,5.3,2,SUP02,Lion City Foods,12.58,Chilled,BATCH-131-A,03/10/26,27/10/26,24,Healthy,Medium,29/09/26
-ING171,Tortilla Chips Portion,Bakery,pack,16.0,54.4,76.6,32.5,10.94,1.5,2,SUP02,Lion City Foods,1.7,Ambient,BATCH-132-A,05/10/26,17/12/26,73,Critical,Low,29/09/26
-ING172,Turkey Patty,Protein,kg,155.4,88.1,68.5,29.4,9.78,15.9,6,SUP01,FreshLink SG,7.31,Frozen,BATCH-066-A,02/10/26,11/11/26,40,Healthy,Medium,29/09/26
-ING173,Vanilla Shake Base Portion,Dairy,pack,162.5,106.3,74.1,42.8,10.58,15.4,6,SUP04,Metro Food Supply,16.25,Chilled,BATCH-134-A,30/09/26,04/11/26,35,Healthy,Medium,29/09/26
-ING174,Vanilla Soft Serve Portion,Dairy,pack,118.6,44.1,59.1,18.8,8.45,14.0,3,SUP02,Lion City Foods,17.99,Chilled,BATCH-135-A,14/10/26,02/11/26,19,Overstock,Medium,29/09/26
-ING175,Vanilla Syrup,Sauces & Condiments,L,23.9,15.9,27.1,8.2,3.87,6.2,2,SUP04,PantryPro Distribution,7.92,Ambient,BATCH-054-A,02/10/26,28/02/27,149,Healthy,Low,29/09/26
-ING176,Vegetable Broth,Sauce/Condiment,liter,62.3,49.0,72.7,28.2,10.39,6.0,2,SUP01,FreshLink SG,10.32,Ambient,BATCH-136-A,12/10/26,20/01/27,100,Healthy,Low,29/09/26
-ING177,Vegetable Pepper-Onion Portion,Fresh Produce,kg,45.0,24.7,19.7,10.6,2.82,16.0,5,SUP04,PantryPro Distribution,5.9,Chilled,BATCH-014-A,05/10/26,17/10/26,12,Healthy,Medium,29/09/26
-ING178,Veggie Patty,Protein,kg,282.6,101.8,59.8,42.0,8.54,33.1,7,SUP03,Harbour Cold Chain,4.18,Frozen,BATCH-138-A,07/10/26,06/02/27,122,Overstock,Low,29/09/26
-ING179,Water,Beverage,pack,37.9,24.9,21.6,12.5,3.09,12.3,4,SUP04,Metro Food Supply,0.89,Ambient,BATCH-139-A,01/10/26,18/01/27,109,Healthy,Low,29/09/26
-ING180,Whipped Cream,Dairy & Chilled,kg,86.1,73.7,76.0,20.4,7.62,11.3,7,SUP05,Metro Food Supply,7.59,Chilled,BATCH-055-A,02/10/26,19/10/26,17,Healthy,Medium,29/09/26
-ING181,Whipped Topping Portion,Dry/Frozen Goods,pack,17.5,26.4,35.1,11.4,5.01,3.5,3,SUP05,Island Ingredients,16.47,Ambient,BATCH-140-A,11/10/26,25/03/27,165,Low,Low,29/09/26
-ING182,White Bread,Bakery,pack,39.3,28.9,24.3,12.6,2.72,14.4,6,SUP03,Harbour Cold Chain,4.72,Ambient,BATCH-083-A,05/10/26,19/10/26,14,Healthy,Medium,29/09/26
-ING183,Wrap Sauce Portion,Sauce/Condiment,liter,248.7,88.7,71.0,48.1,10.14,24.5,4,SUP02,Lion City Foods,13.65,Ambient,BATCH-142-A,14/10/26,02/12/26,49,Overstock,Low,29/09/26
-ING184,Yogurt,Dairy & Chilled,kg,43.3,32.5,28.2,7.4,3.59,12.1,7,SUP02,Lion City Foods,15.67,Chilled,BATCH-067-A,06/10/26,24/10/26,18,Healthy,Medium,29/09/26
-ING185,Yogurt Portion,Dairy,pack,108.6,38.9,24.4,14.5,3.48,31.2,7,SUP05,Island Ingredients,2.49,Chilled,BATCH-144-A,30/09/26,18/10/26,18,Overstock,Medium,29/09/26
+ING001,Apple Pie Slice,Bakery,pack,4.5,7.0,10.9,4.1,1.45,3.1,2,SUP01,FreshLink SG,1.21,Ambient,BATCH-001-A,30/12/2025,15/01/2026,16,Low,Medium,29/09/26
+ING002,Burger Bun,Bakery,pack,8.9,13.8,21.5,3.4,1.48,6.0,7,SUP02,Lion City Foods,3.44,Ambient,BATCH-002-A,08/12/2025,20/12/2025,12,Low,Medium,29/09/26
+ING003,Beef Patty,Protein,kg,126.3,96.0,84.9,36.2,9.96,12.7,6,SUP03,Harbour Cold Chain,15.05,Frozen,BATCH-003-A,08/12/2025,11/01/2026,34,Healthy,Medium,29/09/26
+ING004,Cheese Slice,Dairy & Chilled,kg,37.7,25.7,51.6,18.3,7.37,5.1,1,SUP04,PantryPro Distribution,5.84,Chilled,BATCH-004-A,03/12/2025,18/12/2025,15,Healthy,Medium,29/09/26
+ING005,BBQ Sauce Portion,Sauces & Condiments,L,30.5,21.5,16.8,7.4,2.35,13.0,6,SUP05,Metro Food Supply,6.6,Ambient,BATCH-005-A,04/12/2025,11/05/2026,158,Healthy,Low,29/09/26
+ING006,Ranch Sauce Portion,Sauces & Condiments,L,49.6,26.4,40.2,20.7,5.74,8.6,1,SUP01,FreshLink SG,11.06,Ambient,BATCH-006-A,05/12/2025,09/04/2026,125,Healthy,Low,29/09/26
+ING007,Lettuce Portion,Fresh Produce,kg,75.3,53.0,41.3,21.2,4.55,16.5,7,SUP02,Lion City Foods,3.21,Chilled,BATCH-007-A,02/12/2025,12/12/2025,10,Healthy,High,29/09/26
+ING008,Onion Portion,Fresh Produce,kg,117.4,36.4,36.6,25.9,5.23,22.4,2,SUP03,Harbour Cold Chain,6.81,Chilled,BATCH-008-A,30/12/2025,12/01/2026,13,Overstock,High,29/09/26
+ING009,Bottled Water,Beverage,unit,218.7,72.8,56.2,24.6,8.03,27.2,6,SUP04,PantryPro Distribution,1.14,Ambient,BATCH-009-A,09/12/2025,18/07/2026,221,Overstock,Low,29/09/26
+ING010,Flour Tortilla,Bakery,pack,5.8,20.1,38.4,9.6,3.51,1.7,3,SUP05,Metro Food Supply,1.83,Ambient,BATCH-010-A,03/12/2025,19/12/2025,16,Critical,Medium,29/09/26
+ING011,Scrambled Egg Portion,Dairy & Chilled,kg,37.3,58.2,90.7,34.4,7.94,4.7,3,SUP01,FreshLink SG,8.72,Chilled,BATCH-011-A,29/12/2025,14/01/2026,16,Low,Medium,29/09/26
+ING012,Sausage Portion,Protein,kg,28.9,32.1,41.7,26.6,5.51,5.2,1,SUP02,Lion City Foods,12.66,Frozen,BATCH-012-A,04/12/2025,06/01/2026,33,Low,Medium,29/09/26
+ING013,Cheese Portion,Dairy & Chilled,kg,82.0,65.2,61.4,32.3,8.22,10.0,4,SUP03,Harbour Cold Chain,14.05,Chilled,BATCH-013-A,01/12/2025,16/12/2025,15,Healthy,Medium,29/09/26
+ING014,Vegetable Pepper-Onion Portion,Fresh Produce,kg,45.0,24.7,19.7,10.6,2.82,16.0,5,SUP04,PantryPro Distribution,5.9,Chilled,BATCH-014-A,05/12/2025,17/12/2025,12,Healthy,Medium,29/09/26
+ING015,Salsa Portion,Sauces & Condiments,L,28.3,23.9,31.8,10.3,4.55,6.2,3,SUP05,Metro Food Supply,12.23,Ambient,BATCH-015-A,30/12/2025,08/05/2026,129,Healthy,Low,29/09/26
+ING016,Breakfast Sandwich Bun,Bakery,pack,61.2,38.3,26.4,11.9,3.77,16.2,7,SUP01,FreshLink SG,1.98,Ambient,BATCH-016-A,06/12/2025,22/12/2025,16,Healthy,Medium,29/09/26
+ING017,Egg,Dairy & Chilled,kg,95.9,56.7,56.4,16.4,8.06,11.9,5,SUP02,Lion City Foods,14.14,Chilled,BATCH-017-A,09/12/2025,27/12/2025,18,Healthy,Medium,29/09/26
+ING018,Butter Portion,Dairy & Chilled,kg,167.4,61.5,46.1,15.4,6.58,25.4,7,SUP03,Harbour Cold Chain,17.28,Chilled,BATCH-018-A,06/12/2025,20/12/2025,14,Overstock,Medium,29/09/26
+ING019,Brownie,Bakery,pack,137.9,49.1,37.0,22.7,5.29,26.1,5,SUP04,PantryPro Distribution,4.76,Ambient,BATCH-019-A,30/12/2025,13/01/2026,14,Overstock,Medium,29/09/26
+ING020,Chicken Tender Portion,Protein,kg,27.0,71.2,129.6,23.5,9.54,2.8,5,SUP05,Metro Food Supply,16.74,Frozen,BATCH-020-A,07/12/2025,14/01/2026,38,Low,Low,29/09/26
+ING021,Buffalo Sauce Portion,Sauces & Condiments,L,39.4,42.8,54.8,7.3,3.55,11.1,10,SUP01,FreshLink SG,3.4,Ambient,BATCH-021-A,03/12/2025,17/04/2026,135,Low,Low,29/09/26
+ING022,Grilled Chicken Portion,Protein,kg,70.0,94.1,137.0,29.3,12.96,5.4,5,SUP02,Lion City Foods,14.37,Frozen,BATCH-022-A,30/12/2025,06/02/2026,38,Low,Medium,29/09/26
+ING023,Parmesan Portion,Dry Goods,kg,73.6,57.8,53.6,35.7,7.37,10.0,3,SUP03,Harbour Cold Chain,11.9,Ambient,BATCH-023-A,07/12/2025,30/07/2026,235,Healthy,Low,29/09/26
+ING024,Croutons,Dry Goods,kg,129.2,77.5,65.6,40.0,9.37,13.8,4,SUP04,PantryPro Distribution,17.92,Ambient,BATCH-024-A,03/12/2025,26/06/2026,205,Healthy,Low,29/09/26
+ING025,Caesar Dressing,Sauces & Condiments,L,49.4,39.8,38.2,14.8,4.17,11.8,6,SUP05,Metro Food Supply,7.74,Ambient,BATCH-025-A,02/12/2025,05/04/2026,124,Healthy,Low,29/09/26
+ING026,Chicken Nuggets,Protein,kg,90.9,78.7,82.2,33.8,8.98,10.1,5,SUP01,FreshLink SG,6.05,Frozen,BATCH-026-A,09/12/2025,08/01/2026,30,Healthy,Medium,29/09/26
+ING027,Chili,Dry Goods,kg,37.9,28.5,62.0,19.6,8.86,4.3,1,SUP02,Lion City Foods,5.82,Ambient,BATCH-027-A,09/12/2025,08/07/2026,211,Healthy,Low,29/09/26
+ING028,Chocolate Chip Cookie,Bakery,pack,94.6,32.7,30.0,19.9,4.28,22.1,3,SUP03,Harbour Cold Chain,4.6,Ambient,BATCH-028-A,02/12/2025,17/12/2025,15,Overstock,Medium,29/09/26
+ING029,Pickles,Dry Goods,kg,66.4,25.3,22.3,12.6,3.18,20.9,4,SUP04,PantryPro Distribution,15.89,Ambient,BATCH-029-A,05/12/2025,02/07/2026,209,Overstock,Low,29/09/26
+ING030,Ketchup,Sauces & Condiments,L,5.8,32.3,65.3,26.9,5.44,1.1,1,SUP05,Metro Food Supply,14.91,Ambient,BATCH-030-A,05/12/2025,25/04/2026,141,Critical,Low,29/09/26
+ING031,Mustard,Sauces & Condiments,L,10.5,14.4,22.0,8.1,3.14,3.3,2,SUP01,FreshLink SG,6.82,Ambient,BATCH-031-A,05/12/2025,15/04/2026,131,Low,Low,29/09/26
+ING032,Coffee Beans,Fresh Produce,kg,21.0,24.1,40.0,12.7,5.71,3.7,2,SUP02,Lion City Foods,3.28,Chilled,BATCH-032-A,07/12/2025,17/12/2025,10,Low,Medium,29/09/26
+ING033,Coleslaw,Dry Goods,kg,222.7,120.7,60.8,42.6,8.68,25.7,9,SUP03,Harbour Cold Chain,8.8,Ambient,BATCH-033-A,02/12/2025,10/06/2026,190,Healthy,Low,29/09/26
+ING034,Frozen Fries,Frozen,kg,38.1,31.9,32.1,14.2,4.43,8.6,4,SUP04,PantryPro Distribution,17.77,Frozen,BATCH-034-A,05/12/2025,04/04/2026,120,Healthy,Low,29/09/26
+ING035,Frying Oil,Sauces & Condiments,L,86.7,63.6,53.2,29.6,6.8,12.8,5,SUP05,Metro Food Supply,4.9,Ambient,BATCH-035-A,07/12/2025,07/05/2026,151,Healthy,Low,29/09/26
+ING036,Salt,Dry Goods,kg,50.0,29.4,28.6,8.9,4.09,12.2,5,SUP01,FreshLink SG,7.36,Ambient,BATCH-036-A,29/12/2025,13/08/2026,227,Healthy,Low,29/09/26
+ING037,Soft Drink Syrup,Sauces & Condiments,L,39.9,22.3,34.6,17.4,4.95,8.1,1,SUP02,Lion City Foods,17.39,Ambient,BATCH-037-A,01/12/2025,03/04/2026,123,Healthy,Low,29/09/26
+ING038,Carbonated Water,Beverage,unit,184.1,80.7,134.3,42.3,19.19,9.6,2,SUP03,Harbour Cold Chain,1.36,Ambient,BATCH-038-A,02/12/2025,25/06/2026,205,Overstock,Low,29/09/26
+ING039,Crispy Chicken Patty,Protein,kg,151.6,51.5,41.1,22.2,5.87,25.8,5,SUP04,PantryPro Distribution,11.55,Frozen,BATCH-039-A,05/12/2025,14/01/2026,40,Overstock,Low,29/09/26
+ING040,Bacon Strip,Protein,kg,18.0,51.2,94.6,18.3,6.58,2.7,5,SUP05,Metro Food Supply,6.62,Frozen,BATCH-040-A,04/12/2025,06/01/2026,33,Critical,Medium,29/09/26
+ING041,Fruit Cup,Fresh Produce,kg,15.8,23.3,35.5,13.8,4.75,3.3,2,SUP01,FreshLink SG,9.6,Chilled,BATCH-041-A,30/12/2025,09/01/2026,10,Low,High,29/09/26
+ING042,Mixed Greens,Fresh Produce,kg,28.8,45.3,70.9,13.9,6.28,4.6,5,SUP02,Lion City Foods,16.97,Chilled,BATCH-042-A,03/12/2025,14/12/2025,11,Low,Medium,29/09/26
+ING043,Tomato,Fresh Produce,kg,29.8,23.5,40.1,17.8,5.73,5.2,1,SUP03,Harbour Cold Chain,11.98,Chilled,BATCH-043-A,07/12/2025,19/12/2025,12,Healthy,Medium,29/09/26
+ING044,Hash Browns,Frozen,kg,127.3,72.2,56.0,16.2,8.0,15.9,7,SUP04,PantryPro Distribution,17.05,Frozen,BATCH-044-A,03/12/2025,08/04/2026,126,Healthy,Low,29/09/26
+ING045,Iced Tea,Beverage,unit,126.6,74.2,67.8,45.2,9.68,13.1,3,SUP05,Metro Food Supply,2.12,Ambient,BATCH-045-A,01/12/2025,16/06/2026,197,Healthy,Low,29/09/26
+ING046,Black Tea,Beverage,unit,183.1,112.6,119.2,44.5,17.03,10.8,4,SUP01,FreshLink SG,3.1,Ambient,BATCH-046-A,03/12/2025,03/07/2026,212,Healthy,Low,29/09/26
+ING047,Lemonade Syrup,Sauces & Condiments,L,13.3,9.8,16.1,7.5,2.3,5.8,1,SUP02,Lion City Foods,14.45,Ambient,BATCH-047-A,29/12/2025,19/05/2026,141,Healthy,Low,29/09/26
+ING048,Seasoned Tortilla Chips,Bakery,pack,50.9,16.7,14.0,6.7,2.0,25.4,5,SUP03,Harbour Cold Chain,1.33,Ambient,BATCH-048-A,07/12/2025,19/12/2025,12,Overstock,Medium,29/09/26
+ING049,Jalapeno,Fresh Produce,kg,180.6,56.4,40.9,21.3,5.85,30.9,6,SUP04,PantryPro Distribution,9.16,Chilled,BATCH-049-A,08/12/2025,19/12/2025,11,Overstock,Medium,29/09/26
+ING050,Sour Cream,Dairy & Chilled,kg,9.6,24.6,44.5,20.3,4.33,2.2,1,SUP05,Metro Food Supply,5.76,Chilled,BATCH-050-A,29/12/2025,14/01/2026,16,Critical,Medium,29/09/26
+ING051,Potato Bites,Frozen,kg,31.7,41.0,58.5,24.8,8.1,3.9,2,SUP01,FreshLink SG,14.12,Frozen,BATCH-051-A,05/12/2025,13/05/2026,159,Low,Low,29/09/26
+ING052,Macaroni,Dry Goods,kg,69.4,79.4,105.3,43.8,8.89,7.8,4,SUP02,Lion City Foods,5.28,Ambient,BATCH-052-A,05/12/2025,04/06/2026,181,Low,Low,29/09/26
+ING053,Milk,Dairy & Chilled,kg,77.7,47.0,52.7,24.4,7.53,10.3,3,SUP03,Harbour Cold Chain,4.97,Chilled,BATCH-053-A,02/12/2025,18/12/2025,16,Healthy,Medium,29/09/26
+ING054,Vanilla Syrup,Sauces & Condiments,L,23.9,15.9,27.1,8.2,3.87,6.2,2,SUP04,PantryPro Distribution,7.92,Ambient,BATCH-054-A,02/12/2025,30/04/2026,149,Healthy,Low,29/09/26
+ING055,Whipped Cream,Dairy & Chilled,kg,86.1,73.7,76.0,20.4,7.62,11.3,7,SUP05,Metro Food Supply,7.59,Chilled,BATCH-055-A,02/12/2025,19/12/2025,17,Healthy,Medium,29/09/26
+ING056,Mozzarella,Dry Goods,kg,76.2,46.7,67.5,27.4,9.65,7.9,2,SUP01,FreshLink SG,17.71,Ambient,BATCH-056-A,05/12/2025,16/07/2026,223,Healthy,Low,29/09/26
+ING057,Marinara Sauce,Sauces & Condiments,L,71.9,39.8,25.1,7.5,3.59,20.0,9,SUP02,Lion City Foods,11.5,Ambient,BATCH-057-A,03/12/2025,13/04/2026,131,Healthy,Low,29/09/26
+ING058,Mushroom,Fresh Produce,kg,31.4,12.0,12.3,6.7,1.76,17.8,3,SUP03,Harbour Cold Chain,11.9,Chilled,BATCH-058-A,04/12/2025,17/12/2025,13,Overstock,Medium,29/09/26
+ING059,Oatmeal,Dry Goods,kg,110.7,45.6,23.3,15.6,3.33,33.2,9,SUP04,PantryPro Distribution,9.26,Ambient,BATCH-059-A,29/12/2025,11/08/2026,225,Overstock,Low,29/09/26
+ING060,Onion Rings,Fresh Produce,kg,18.7,51.2,93.9,21.5,5.95,3.1,5,SUP05,Metro Food Supply,8.15,Chilled,BATCH-060-A,09/12/2025,20/12/2025,11,Critical,Medium,29/09/26
+ING061,Pancake Mix,Dry Goods,kg,51.4,64.3,90.1,45.3,9.52,5.4,2,SUP01,FreshLink SG,4.43,Ambient,BATCH-061-A,09/12/2025,31/07/2026,234,Low,Low,29/09/26
+ING062,Fish Fillet,Protein,kg,40.5,59.5,90.4,34.0,8.51,4.8,3,SUP02,Lion City Foods,4.47,Frozen,BATCH-062-A,03/12/2025,10/01/2026,38,Low,Medium,29/09/26
+ING063,Tartar Sauce,Sauces & Condiments,L,93.4,54.6,37.7,16.9,5.39,17.3,7,SUP03,Harbour Cold Chain,11.32,Ambient,BATCH-063-A,01/12/2025,09/05/2026,159,Healthy,Low,29/09/26
+ING064,Green Beans,Fresh Produce,kg,34.0,24.9,29.1,8.3,4.16,8.2,4,SUP04,PantryPro Distribution,9.71,Chilled,BATCH-064-A,05/12/2025,17/12/2025,12,Healthy,Medium,29/09/26
+ING065,Cucumber,Fresh Produce,kg,62.8,36.0,33.4,16.9,4.77,13.2,4,SUP05,Metro Food Supply,6.9,Chilled,BATCH-065-A,01/12/2025,11/12/2025,10,Healthy,High,29/09/26
+ING066,Turkey Patty,Protein,kg,155.4,88.1,68.5,29.4,9.78,15.9,6,SUP01,FreshLink SG,7.31,Frozen,BATCH-066-A,02/12/2025,11/01/2026,40,Healthy,Medium,29/09/26
+ING067,Yogurt,Dairy & Chilled,kg,43.3,32.5,28.2,7.4,3.59,12.1,7,SUP02,Lion City Foods,15.67,Chilled,BATCH-067-A,06/12/2025,24/12/2025,18,Healthy,Medium,29/09/26
+ING068,Granola,Dry Goods,kg,112.7,39.0,41.0,27.3,5.86,19.2,2,SUP03,Harbour Cold Chain,8.69,Ambient,BATCH-068-A,05/12/2025,04/07/2026,211,Overstock,Low,29/09/26
+ING069,Beef Rendang,Protein,kg,124.7,40.2,70.1,20.2,10.02,12.4,2,SUP04,PantryPro Distribution,5.89,Frozen,BATCH-069-A,30/12/2025,04/02/2026,36,Overstock,Medium,29/09/26
+ING070,Coconut Milk,Dairy & Chilled,kg,15.2,92.0,187.2,31.0,8.72,1.7,7,SUP05,Metro Food Supply,9.58,Chilled,BATCH-070-A,02/12/2025,16/12/2025,14,Critical,Medium,29/09/26
+ING071,Galangal,Fresh Produce,kg,30.9,39.9,56.9,13.5,3.77,8.2,7,SUP01,FreshLink SG,12.0,Chilled,BATCH-071-A,04/12/2025,17/12/2025,13,Low,Medium,29/09/26
+ING072,Lemongrass,Fresh Produce,kg,49.0,53.7,69.1,19.0,5.79,8.5,6,SUP02,Lion City Foods,14.03,Chilled,BATCH-072-A,06/12/2025,17/12/2025,11,Low,Medium,29/09/26
+ING073,Rice Flour,Dry Goods,kg,127.1,71.4,40.7,24.8,5.82,21.8,8,SUP03,Harbour Cold Chain,14.55,Ambient,BATCH-073-A,03/12/2025,20/07/2026,229,Healthy,Low,29/09/26
+ING074,Grass Jelly,Dry Goods,kg,93.1,77.1,76.5,20.1,7.13,13.1,8,SUP04,PantryPro Distribution,6.71,Ambient,BATCH-074-A,03/12/2025,16/06/2026,195,Healthy,Low,29/09/26
+ING075,Palm Sugar,Dry Goods,kg,94.9,75.1,70.3,20.4,9.11,10.4,6,SUP05,Metro Food Supply,4.87,Ambient,BATCH-075-A,05/12/2025,17/07/2026,224,Healthy,Low,29/09/26
+ING076,Red Beans,Fresh Produce,kg,15.4,9.9,13.2,6.1,1.88,8.2,2,SUP01,FreshLink SG,5.71,Chilled,BATCH-076-A,05/12/2025,15/12/2025,10,Healthy,Medium,29/09/26
+ING077,Flat Rice Noodles,Dry Goods,kg,112.9,60.7,37.6,23.1,5.37,21.0,7,SUP02,Lion City Foods,16.15,Ambient,BATCH-077-A,29/12/2025,20/08/2026,234,Healthy,Low,29/09/26
+ING078,Prawns,Protein,kg,133.2,50.8,50.6,14.6,7.23,18.4,5,SUP03,Harbour Cold Chain,10.84,Frozen,BATCH-078-A,05/12/2025,10/01/2026,36,Overstock,Medium,29/09/26
+ING079,Bean Sprouts,Fresh Produce,kg,100.6,40.8,29.1,15.8,4.16,24.2,6,SUP04,PantryPro Distribution,9.26,Chilled,BATCH-079-A,02/12/2025,14/12/2025,12,Overstock,Medium,29/09/26
+ING080,Chives,Fresh Produce,kg,6.7,17.1,30.9,13.7,3.41,2.0,1,SUP05,Metro Food Supply,16.75,Chilled,BATCH-080-A,01/12/2025,14/12/2025,13,Critical,Medium,29/09/26
+ING081,Soy Sauce,Sauces & Condiments,L,54.2,68.9,97.4,22.1,4.68,11.6,10,SUP01,FreshLink SG,3.8,Ambient,BATCH-081-A,09/12/2025,09/04/2026,121,Low,Low,29/09/26
+ING082,Garlic,Fresh Produce,kg,9.3,16.4,26.8,7.5,2.22,4.2,4,SUP02,Lion City Foods,5.78,Chilled,BATCH-082-A,05/12/2025,17/12/2025,12,Low,Medium,29/09/26
+ING083,White Bread,Bakery,pack,39.3,28.9,24.3,12.6,2.72,14.4,6,SUP03,Harbour Cold Chain,4.72,Ambient,BATCH-083-A,05/12/2025,19/12/2025,14,Healthy,Medium,29/09/26
+ING084,Laksa Broth,Sauces & Condiments,L,42.0,22.1,13.3,6.9,1.9,22.1,8,SUP04,PantryPro Distribution,12.58,Ambient,BATCH-084-A,04/12/2025,17/04/2026,134,Healthy,Low,29/09/26
+ING085,Shrimp Paste,Sauces & Condiments,L,44.7,34.4,41.1,28.5,5.87,7.6,1,SUP05,Metro Food Supply,4.86,Ambient,BATCH-085-A,29/12/2025,06/06/2026,159,Healthy,Low,29/09/26
+ING086,Mint,Fresh Produce,kg,30.7,16.5,26.7,8.9,3.81,8.1,2,SUP01,FreshLink SG,14.39,Chilled,BATCH-086-A,06/12/2025,18/12/2025,12,Healthy,Medium,29/09/26
+ING087,Sambal,Sauces & Condiments,L,67.6,40.0,35.5,24.8,5.07,13.3,3,SUP02,Lion City Foods,4.18,Ambient,BATCH-087-A,01/12/2025,19/04/2026,139,Healthy,Low,29/09/26
+ING088,Anchovies,Protein,kg,198.7,60.4,89.5,47.6,12.78,15.5,1,SUP03,Harbour Cold Chain,17.09,Frozen,BATCH-088-A,05/12/2025,10/01/2026,36,Overstock,Medium,29/09/26
+ING089,Peanuts,Dry Goods,kg,72.6,24.6,21.3,12.4,3.04,23.9,4,SUP04,PantryPro Distribution,14.47,Ambient,BATCH-089-A,30/12/2025,11/08/2026,224,Overstock,Low,29/09/26
+ING090,Ghee,Dry Goods,kg,38.9,121.7,228.8,37.1,8.46,4.6,10,SUP05,Metro Food Supply,10.76,Ambient,BATCH-090-A,29/12/2025,19/07/2026,202,Low,Low,29/09/26
+ING091,Curry Sauce,Sauces & Condiments,L,12.0,21.6,35.5,8.6,2.17,5.5,6,SUP01,FreshLink SG,4.14,Ambient,BATCH-091-A,05/12/2025,05/05/2026,151,Low,Low,29/09/26
+ING092,Spaghetti,Dry Goods,kg,62.8,75.4,103.1,32.3,7.19,8.7,6,SUP02,Lion City Foods,13.87,Ambient,BATCH-092-A,05/12/2025,14/06/2026,191,Low,Low,29/09/26
+ING093,Tandoori Masala,Dry Goods,kg,119.1,68.8,49.4,33.5,7.05,16.9,5,SUP03,Harbour Cold Chain,15.3,Ambient,BATCH-093-A,06/12/2025,01/07/2026,207,Healthy,Low,29/09/26
+ING094,Condensed Milk,Dairy & Chilled,kg,68.8,38.8,28.4,18.5,4.06,16.9,5,SUP04,PantryPro Distribution,16.17,Chilled,BATCH-094-A,30/12/2025,15/01/2026,16,Healthy,Medium,29/09/26
+ING095,Evaporated Milk,Dairy & Chilled,kg,69.0,41.8,51.2,27.2,7.32,9.4,2,SUP05,Metro Food Supply,10.16,Chilled,BATCH-095-A,04/12/2025,18/12/2025,14,Healthy,Medium,29/09/26
