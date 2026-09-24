@@ -19,6 +19,8 @@ from agents.customer_pattern.agent import (
 
 from agents.demand_forecast.agent import DemandForecastingAgent
 from agents.inventory_decision.agent import InventoryDecisionAgent
+from agents.anomaly_validation.agent import anomaly_validation_agent
+from agents.waste_reduction.agent import agent as waste_reduction_agent
 
 # ============================================================
 # DATASET PATH
@@ -29,9 +31,7 @@ from agents.inventory_decision.agent import InventoryDecisionAgent
 # ============================================================
 
 DATASET_PATH = (
-    r"C:\Users\saaral\Desktop\hackathon\data"
-    r"\2026-havi-niu-hackathon"
-    r"\qsr_demand_dataset.csv"
+   r"C:\Users\saaral\Desktop\hackathon\code\Show-Me-Your-Agents\data\qsr_demand_dataset.csv"
 )
 
 
@@ -1769,6 +1769,112 @@ def run_demand_forecasting(state):
     )
 
     # --------------------------------------------------------
+    # PRESERVE RESTAURANT + MENU-ITEM DETAIL FOR ALL-RESTAURANT
+    # MULTI-ITEM REQUESTS
+    # --------------------------------------------------------
+    # The forecasting agent stores a complete 7-day forecast. For a request
+    # such as "item 1 and item 2 in all restaurants for the next 2 days",
+    # the default all-scope response aggregates all restaurants/items by date.
+    # Rebuild the user-facing result from the detailed forecast CSV so that
+    # each restaurant/menu-item combination is returned separately.
+
+    requested_menu_items = request.get("menu_item_ids") or []
+    restaurant_scope = request.get("restaurant_scope")
+
+    if restaurant_scope == "all" and requested_menu_items:
+        forecast_path = result.get("output_path")
+
+        if forecast_path and Path(forecast_path).exists():
+            detailed_forecast = pd.read_csv(forecast_path, low_memory=False)
+            detailed_forecast["date"] = pd.to_datetime(
+                detailed_forecast["date"], errors="coerce"
+            )
+            detailed_forecast["predicted_quantity"] = pd.to_numeric(
+                detailed_forecast["predicted_quantity"], errors="coerce"
+            )
+            detailed_forecast = detailed_forecast.dropna(
+                subset=["date", "predicted_quantity"]
+            )
+
+            detailed_forecast = detailed_forecast[
+                detailed_forecast["menu_item_id"].astype(str).isin(
+                    [str(value) for value in requested_menu_items]
+                )
+            ].copy()
+
+            requested_days = int(
+                request.get("requested_forecast_horizon")
+                or request.get("forecast_horizon")
+                or 7
+            )
+            requested_days = max(1, min(requested_days, 7))
+
+            requested_dates = (
+                detailed_forecast["date"]
+                .drop_duplicates()
+                .sort_values()
+                .head(requested_days)
+            )
+            detailed_forecast = detailed_forecast[
+                detailed_forecast["date"].isin(requested_dates)
+            ].copy()
+
+            restaurant_names = {}
+            if "restaurant_name" in restaurant_lookup.columns:
+                restaurant_names = dict(
+                    zip(
+                        restaurant_lookup["restaurant_id"].astype(str),
+                        restaurant_lookup["restaurant_name"].astype(str),
+                    )
+                )
+
+            menu_names = {}
+            if "menu_item_name" in menu_lookup.columns:
+                menu_names = dict(
+                    zip(
+                        menu_lookup["menu_item_id"].astype(str),
+                        menu_lookup["menu_item_name"].astype(str),
+                    )
+                )
+
+            combination_results = []
+
+            grouped = detailed_forecast.groupby(
+                ["restaurant_id", "menu_item_id"],
+                sort=True,
+                dropna=False,
+            )
+
+            for (restaurant_id, menu_item_id), group in grouped:
+                group = group.sort_values("date")
+                daily_forecast = []
+
+                for _, row in group.iterrows():
+                    daily_forecast.append({
+                        "date": row["date"].strftime("%Y-%m-%d"),
+                        "predicted_quantity": float(row["predicted_quantity"]),
+                    })
+
+                combination_results.append({
+                    "restaurant_id": restaurant_id,
+                    "restaurant_name": restaurant_names.get(str(restaurant_id)),
+                    "menu_item_id": menu_item_id,
+                    "menu_item_name": menu_names.get(str(menu_item_id)),
+                    "total_predicted_demand": float(
+                        group["predicted_quantity"].sum()
+                    ),
+                    "daily_forecast": daily_forecast,
+                })
+
+            if combination_results:
+                result["result"] = {
+                    "scope": "all_restaurants_selected_items",
+                    "requested_forecast_horizon": requested_days,
+                    "combination_results": combination_results,
+                    "combination_count": len(combination_results),
+                }
+
+    # --------------------------------------------------------
     # REGISTER FORECAST IN SHARED CONTEXT
     # --------------------------------------------------------
 
@@ -1827,38 +1933,403 @@ def run_demand_forecasting(state):
 
 
 # ============================================================
+# REAL ANOMALY / VALIDATION AGENT WRAPPER
+# ============================================================
+
+def run_anomaly_validation(state):
+    """
+    Validate the demand forecast for each requested restaurant/menu-item pair.
+
+    The current Demand Forecasting Agent returns combination_results, while
+    the existing anomaly-validation agent expects one restaurant/item and a
+    predicted_demand value. This wrapper adapts between those formats.
+    """
+
+    print(
+        "[INTEGRATION] Starting Anomaly / Validation Agent..."
+    )
+
+    request = state.get(
+        "request",
+        {}
+    )
+
+    agent_results = state.get(
+        "agent_results",
+        {}
+    )
+
+    demand_result = agent_results.get(
+        "demand_forecasting",
+        {}
+    )
+
+    forecast_result = demand_result.get(
+        "result",
+        {}
+    )
+
+    combinations = forecast_result.get(
+        "combination_results",
+        []
+    )
+
+    # Backward compatibility for a single-result forecast.
+    if not combinations:
+
+        total_predicted_demand = forecast_result.get(
+            "total_predicted_demand"
+        )
+
+        if total_predicted_demand is not None:
+
+            combinations = [
+                {
+                    "restaurant_id":
+                        forecast_result.get(
+                            "restaurant_id"
+                        )
+                        or request.get(
+                            "restaurant_id"
+                        ),
+
+                    "menu_item_id":
+                        forecast_result.get(
+                            "menu_item_id"
+                        )
+                        or request.get(
+                            "menu_item_id"
+                        ),
+
+                    "total_predicted_demand":
+                        total_predicted_demand,
+                }
+            ]
+
+    if not combinations:
+
+        raise ValueError(
+            "Anomaly Validation Agent requires a demand forecast result."
+        )
+
+    dataset_path = (
+        state.get(
+            "shared_context",
+            {}
+        )
+        .get(
+            "data",
+            {}
+        )
+        .get(
+            "unified_demand_path"
+        )
+    )
+
+    if not dataset_path:
+
+        dataset_path = str(
+            DATA_ANALYST_OUTPUT_PATH
+        )
+
+    validation_results = []
+
+    for combination in combinations:
+
+        restaurant_id = combination.get(
+            "restaurant_id"
+        )
+
+        menu_item_id = combination.get(
+            "menu_item_id"
+        )
+
+        predicted_demand = combination.get(
+            "total_predicted_demand"
+        )
+
+        if predicted_demand is None:
+            continue
+
+        validation_state = dict(
+            state
+        )
+
+        validation_state[
+            "request"
+        ] = dict(
+            request
+        )
+
+        validation_state[
+            "request"
+        ][
+            "restaurant_scope"
+        ] = "single"
+
+        validation_state[
+            "request"
+        ][
+            "restaurant_id"
+        ] = restaurant_id
+
+        validation_state[
+            "request"
+        ][
+            "menu_item_id"
+        ] = menu_item_id
+
+        validation_state[
+            "agent_results"
+        ] = dict(
+            agent_results
+        )
+
+        # Format expected by the existing anomaly-validation agent.
+        validation_state[
+            "agent_results"
+        ][
+            "demand_forecasting"
+        ] = {
+            "restaurant_id":
+                restaurant_id,
+
+            "menu_item_id":
+                menu_item_id,
+
+            "predicted_demand":
+                float(
+                    predicted_demand
+                ),
+
+            "forecast_horizon":
+                demand_result.get(
+                    "forecast_horizon",
+                    7
+                ),
+
+            "confidence":
+                None,
+        }
+
+        validation = anomaly_validation_agent(
+            validation_state,
+            dataset_path=dataset_path,
+        )
+
+        validation_results.append(
+            validation
+        )
+
+    if not validation_results:
+
+        raise ValueError(
+            "No forecast combinations were available "
+            "for anomaly validation."
+        )
+
+    overall_status = "pass"
+
+    if any(
+        result.get(
+            "validation_status"
+        ) == "fail"
+        for result in validation_results
+    ):
+
+        overall_status = "fail"
+
+    elif any(
+        result.get(
+            "validation_status"
+        ) == "warning"
+        for result in validation_results
+    ):
+
+        overall_status = "warning"
+
+    result = {
+        "analysis_type":
+            "forecast_validation",
+
+        "validation_status":
+            overall_status,
+
+        "combination_results":
+            validation_results,
+
+        "combination_count":
+            len(
+                validation_results
+            ),
+
+        "reforecast_recommended":
+            any(
+                bool(
+                    validation.get(
+                        "reforecast_recommended"
+                    )
+                )
+                for validation in validation_results
+            ),
+    }
+
+    state.setdefault(
+        "shared_context",
+        {}
+    ).setdefault(
+        "validation",
+        {}
+    ).update(
+        {
+            "validation_status":
+                overall_status,
+
+            "combination_count":
+                len(
+                    validation_results
+                ),
+
+            "reforecast_recommended":
+                result[
+                    "reforecast_recommended"
+                ],
+        }
+    )
+
+    print(
+        "[SHARED CONTEXT] Anomaly validation registered."
+    )
+
+    print(
+        "[INTEGRATION] Anomaly / Validation Agent completed."
+    )
+
+    return result
+
+
+# ============================================================
 # REAL INVENTORY DECISION AGENT WRAPPER
 # ============================================================
 
 def run_inventory_decision(state):
-    """Run inventory decisions from the forecast produced in this workflow."""
+    """
+    Run the Inventory Decision Agent, then retrieve only the ingredient-level
+    inventory insights relevant to the restaurant/menu-item pairs in the
+    user's original request.
 
-    print("[INTEGRATION] Starting Inventory Decision Agent...")
+    The complete inventory_decisions.csv is still generated and stored.
+    Retrieval does not recalculate the inventory decisions.
+    """
 
-    shared_context = state.get("shared_context", {})
-    forecast_context = shared_context.get("forecast", {})
-    forecast_path = forecast_context.get("output_path")
+    print(
+        "[INTEGRATION] Starting Inventory Decision Agent..."
+    )
+
+    shared_context = state.get(
+        "shared_context",
+        {}
+    )
+
+    request = state.get(
+        "request",
+        {}
+    )
+
+    # --------------------------------------------------------
+    # REQUIRE DEMAND FORECAST OUTPUT
+    # --------------------------------------------------------
+
+    forecast_context = shared_context.get(
+        "forecast",
+        {}
+    )
+
+    forecast_path = forecast_context.get(
+        "output_path"
+    )
 
     if not forecast_path:
+
         raise ValueError(
             "Inventory Decision Agent requires the demand forecast output "
             "from shared_context['forecast']['output_path']."
         )
 
-    shared_data = shared_context.get("data", {})
-    unified_path = shared_data.get("unified_demand_path")
+    forecast_path = Path(
+        forecast_path
+    )
 
-    if not unified_path:
-        raise ValueError(
-            "Inventory Decision Agent requires unified_demand_path from Data Analyst."
+    if not forecast_path.exists():
+
+        raise FileNotFoundError(
+            f"Demand forecast file not found: {forecast_path}"
         )
 
-    project_root = Path(__file__).resolve().parent
-    output_path = project_root / "data" / "outputs" / "inventory_decisions.csv"
+    # --------------------------------------------------------
+    # REQUIRE UNIFIED DEMAND DATA
+    # --------------------------------------------------------
+
+    shared_data = shared_context.get(
+        "data",
+        {}
+    )
+
+    unified_path = shared_data.get(
+        "unified_demand_path"
+    )
+
+    if not unified_path:
+
+        raise ValueError(
+            "Inventory Decision Agent requires unified_demand_path "
+            "from Data Analyst."
+        )
+
+    # --------------------------------------------------------
+    # PROJECT FILES
+    # --------------------------------------------------------
+
+    project_root = (
+        Path(__file__)
+        .resolve()
+        .parent
+    )
+
+    inventory_path = (
+        project_root
+        / "data"
+        / "inventory_dataset.csv"
+    )
+
+    recipe_path = (
+        project_root
+        / "data"
+        / "ingredients.csv"
+    )
+
+    output_path = (
+        project_root
+        / "data"
+        / "outputs"
+        / "inventory_decisions.csv"
+    )
+
+    if not recipe_path.exists():
+
+        raise FileNotFoundError(
+            f"Ingredient mapping file not found: {recipe_path}"
+        )
+
+    # --------------------------------------------------------
+    # RUN INVENTORY DECISION AGENT
+    # --------------------------------------------------------
+    # This continues to generate the COMPLETE inventory decision
+    # file. We filter it only after generation.
 
     inventory_agent = InventoryDecisionAgent(
-        inventory_path=project_root / "data" / "inventory_dataset.csv",
-        recipe_path=project_root / "data" / "ingredients.csv",
+        inventory_path=inventory_path,
+        recipe_path=recipe_path,
         unified_demand_path=unified_path,
     )
 
@@ -1867,17 +2338,456 @@ def run_inventory_decision(state):
         output_path=output_path,
     )
 
-    shared_context.setdefault("inventory", {}).update({
-        "output_path": result.get("output_path"),
-        "forecast_horizon_days": result.get("forecast_horizon_days"),
-        "orders_recommended": result.get("orders_recommended"),
-        "stockout_risk_counts": result.get("stockout_risk_counts", {}),
-    })
+    if not isinstance(
+        result,
+        dict
+    ):
 
-    print("[SHARED CONTEXT] Inventory decision registered.")
-    print("[INTEGRATION] Inventory Decision Agent completed.")
+        raise ValueError(
+            "Inventory Decision Agent returned an invalid result."
+        )
 
-    return result
+    # Prefer the path returned by the agent.
+    decision_path = Path(
+        result.get(
+            "output_path",
+            output_path
+        )
+    )
+
+    if not decision_path.is_absolute():
+
+        decision_path = (
+            project_root
+            / decision_path
+        )
+
+    decision_path = decision_path.resolve()
+
+    if not decision_path.exists():
+
+        raise FileNotFoundError(
+            "Inventory decision output was not created: "
+            f"{decision_path}"
+        )
+
+    # --------------------------------------------------------
+    # LOAD STORED RESULTS + MENU-ITEM/INGREDIENT MAPPING
+    # --------------------------------------------------------
+
+    decisions_df = pd.read_csv(
+        decision_path,
+        low_memory=False
+    )
+
+    ingredients_df = pd.read_csv(
+        recipe_path,
+        low_memory=False
+    )
+
+    required_mapping_columns = {
+        "menu_item_id",
+        "ingredient_id",
+    }
+
+    missing_mapping_columns = (
+        required_mapping_columns
+        - set(ingredients_df.columns)
+    )
+
+    if missing_mapping_columns:
+
+        raise ValueError(
+            "ingredients.csv is missing required columns: "
+            + ", ".join(
+                sorted(
+                    missing_mapping_columns
+                )
+            )
+        )
+
+    if "ingredient_id" not in decisions_df.columns:
+
+        raise ValueError(
+            "inventory_decisions.csv must contain ingredient_id "
+            "for menu-item-level retrieval."
+        )
+
+    # --------------------------------------------------------
+    # GET EXACT RESTAURANT / MENU-ITEM PAIRS
+    # --------------------------------------------------------
+
+    requested_pairs = (
+        request.get(
+            "restaurant_item_pairs"
+        )
+        or []
+    )
+
+    # Backward compatibility for a normal single request.
+    if not requested_pairs:
+
+        restaurant_id = request.get(
+            "restaurant_id"
+        )
+
+        menu_item_id = request.get(
+            "menu_item_id"
+        )
+
+        if menu_item_id is not None:
+
+            requested_pairs = [
+                {
+                    "restaurant_id":
+                        restaurant_id,
+
+                    "menu_item_id":
+                        menu_item_id,
+                }
+            ]
+
+    # --------------------------------------------------------
+    # LOAD FORECAST TO GET PAIR-SPECIFIC FORECAST DEMAND
+    # --------------------------------------------------------
+
+    forecast_df = pd.read_csv(
+        forecast_path,
+        low_memory=False
+    )
+
+    # --------------------------------------------------------
+    # BUILD DETAILED USER-REQUESTED INVENTORY INSIGHTS
+    # --------------------------------------------------------
+
+    combination_results = []
+
+    for pair in requested_pairs:
+
+        restaurant_id = pair.get(
+            "restaurant_id"
+        )
+
+        menu_item_id = pair.get(
+            "menu_item_id"
+        )
+
+        if menu_item_id is None:
+            continue
+
+        # -----------------------------------------------
+        # Find the requested menu item's ingredients.
+        # -----------------------------------------------
+
+        item_ingredients = ingredients_df[
+            ingredients_df[
+                "menu_item_id"
+            ].astype(str)
+            == str(
+                menu_item_id
+            )
+        ].copy()
+
+        if item_ingredients.empty:
+            continue
+
+        ingredient_ids = (
+            item_ingredients[
+                "ingredient_id"
+            ]
+            .astype(str)
+            .unique()
+            .tolist()
+        )
+
+        # -----------------------------------------------
+        # Retrieve stored inventory decisions.
+        # -----------------------------------------------
+
+        item_decisions = decisions_df[
+            decisions_df[
+                "ingredient_id"
+            ].astype(str)
+            .isin(
+                ingredient_ids
+            )
+        ].copy()
+
+        # Merge recipe information so count_per_item/unit/menu
+        # names remain available in the final response.
+        merge_columns = [
+            column
+            for column in [
+                "menu_item_id",
+                "menu_item_name",
+                "ingredient_id",
+                "ingredient_name",
+                "count_per_item",
+                "unit",
+            ]
+            if column in item_ingredients.columns
+        ]
+
+        mapping = (
+            item_ingredients[
+                merge_columns
+            ]
+            .drop_duplicates()
+        )
+
+        merged = mapping.merge(
+            item_decisions,
+            on="ingredient_id",
+            how="left",
+            suffixes=(
+                "_recipe",
+                "_inventory"
+            )
+        )
+
+        # -----------------------------------------------
+        # Get forecast demand for THIS restaurant/item.
+        # -----------------------------------------------
+
+        pair_forecast = forecast_df.copy()
+
+        if (
+            restaurant_id is not None
+            and "restaurant_id"
+            in pair_forecast.columns
+        ):
+
+            pair_forecast = pair_forecast[
+                pair_forecast[
+                    "restaurant_id"
+                ].astype(str)
+                == str(
+                    restaurant_id
+                )
+            ]
+
+        if "menu_item_id" in pair_forecast.columns:
+
+            pair_forecast = pair_forecast[
+                pair_forecast[
+                    "menu_item_id"
+                ].astype(str)
+                == str(
+                    menu_item_id
+                )
+            ]
+
+        forecast_demand = None
+
+        if (
+            not pair_forecast.empty
+            and "predicted_quantity"
+            in pair_forecast.columns
+        ):
+
+            forecast_demand = float(
+                pair_forecast[
+                    "predicted_quantity"
+                ].sum()
+            )
+
+        # -----------------------------------------------
+        # Convert rows into clean dictionaries.
+        # -----------------------------------------------
+
+        ingredient_results = []
+
+        for _, row in merged.iterrows():
+
+            record = {
+                "ingredient_id":
+                    row.get(
+                        "ingredient_id"
+                    ),
+
+                "ingredient_name":
+                    (
+                        row.get(
+                            "ingredient_name_recipe"
+                        )
+                        if pd.notna(
+                            row.get(
+                                "ingredient_name_recipe"
+                            )
+                        )
+                        else row.get(
+                            "ingredient_name_inventory"
+                        )
+                    ),
+
+                "count_per_item":
+                    row.get(
+                        "count_per_item"
+                    ),
+
+                "unit":
+                    (
+                        row.get(
+                            "unit_recipe"
+                        )
+                        if pd.notna(
+                            row.get(
+                                "unit_recipe"
+                            )
+                        )
+                        else row.get(
+                            "unit_inventory"
+                        )
+                    ),
+            }
+
+            # Copy useful inventory-decision columns when present.
+            for column in [
+                "forecast_period_demand",
+                "current_stock",
+                "safety_stock",
+                "lead_time_days",
+                "lead_time_demand",
+                "reorder_point",
+                "recommended_order_quantity",
+                "stockout_risk",
+                "order_required",
+                "decision_reason",
+            ]:
+
+                if column in merged.columns:
+
+                    value = row.get(
+                        column
+                    )
+
+                    if pd.isna(value):
+                        value = None
+
+                    elif hasattr(
+                        value,
+                        "item"
+                    ):
+
+                        try:
+                            value = value.item()
+                        except Exception:
+                            pass
+
+                    record[
+                        column
+                    ] = value
+
+            ingredient_results.append(
+                record
+            )
+
+        menu_item_name = None
+
+        if (
+            "menu_item_name"
+            in item_ingredients.columns
+            and not item_ingredients.empty
+        ):
+
+            menu_item_name = (
+                item_ingredients.iloc[0]
+                .get(
+                    "menu_item_name"
+                )
+            )
+
+        combination_results.append(
+            {
+                "restaurant_id":
+                    restaurant_id,
+
+                "menu_item_id":
+                    menu_item_id,
+
+                "menu_item_name":
+                    menu_item_name,
+
+                "forecast_demand":
+                    forecast_demand,
+
+                "ingredients":
+                    ingredient_results,
+            }
+        )
+
+    # --------------------------------------------------------
+    # REGISTER COMPLETE OUTPUT IN SHARED CONTEXT
+    # --------------------------------------------------------
+
+    shared_context.setdefault(
+        "inventory",
+        {}
+    ).update(
+        {
+            "output_path":
+                str(
+                    decision_path
+                ),
+
+            "forecast_horizon_days":
+                result.get(
+                    "forecast_horizon_days"
+                ),
+
+            "orders_recommended":
+                result.get(
+                    "orders_recommended"
+                ),
+
+            "stockout_risk_counts":
+                result.get(
+                    "stockout_risk_counts",
+                    {}
+                ),
+        }
+    )
+
+    print(
+        "[SHARED CONTEXT] Inventory decision registered."
+    )
+
+    print(
+        "[INTEGRATION] Inventory Decision Agent completed."
+    )
+
+    # --------------------------------------------------------
+    # RETURN REQUEST-SPECIFIC INSIGHTS
+    # --------------------------------------------------------
+
+    return {
+        "status":
+            "success",
+
+        "output_path":
+            str(
+                decision_path
+            ),
+
+        "forecast_horizon_days":
+            result.get(
+                "forecast_horizon_days"
+            ),
+
+        "orders_recommended":
+            result.get(
+                "orders_recommended"
+            ),
+
+        "stockout_risk_counts":
+            result.get(
+                "stockout_risk_counts",
+                {}
+            ),
+
+        "combination_results":
+            combination_results,
+    }
 
 
 # ============================================================
@@ -2016,6 +2926,36 @@ orchestrator.register_agent(
 )
 
 # ============================================================
+# REGISTER ANOMALY / VALIDATION
+# ============================================================
+
+orchestrator.register_agent(
+
+    agent_name=
+        "anomaly_validation",
+
+    agent_function=
+        run_anomaly_validation,
+
+    capabilities=[
+        "forecast_validation",
+        "anomaly_detection",
+        "data_quality_validation",
+        "stockout_risk_validation",
+        "overstock_risk_validation",
+    ],
+
+    dependencies=[
+        "demand_forecasting"
+    ],
+
+    required_user_inputs=[
+        "restaurant"
+    ]
+)
+
+
+# ============================================================
 # REGISTER INVENTORY DECISION
 # ============================================================
 
@@ -2026,6 +2966,31 @@ orchestrator.register_agent(
         "inventory_decision",
         "order_recommendation",
         "stockout_analysis",
+    ],
+    dependencies=[
+        "demand_forecasting"
+    ],
+    required_user_inputs=[
+        "restaurant"
+    ]
+)
+
+
+# ============================================================
+# REGISTER WASTE REDUCTION
+# ============================================================
+
+orchestrator.register_agent(
+    agent_name="waste_reduction",
+    agent_function=waste_reduction_agent,
+    capabilities=[
+        "waste_reduction",
+        "expiry_risk_analysis",
+        "waste_risk_analysis",
+        "promotion_recommendation",
+        "stock_reallocation_recommendation",
+        "priority_selling_recommendation",
+        "future_order_reduction_recommendation",
     ],
     dependencies=[
         "demand_forecasting"
@@ -2718,10 +3683,30 @@ def print_result(response):
                     restaurant_id
                 )
 
+                restaurant_name = combination.get(
+                    "restaurant_name"
+                )
+
+                if restaurant_name is not None:
+                    print(
+                        "Restaurant Name:",
+                        restaurant_name
+                    )
+
                 print(
                     "Menu Item:",
                     menu_item_id
                 )
+
+                menu_item_name = combination.get(
+                    "menu_item_name"
+                )
+
+                if menu_item_name is not None:
+                    print(
+                        "Menu Item Name:",
+                        menu_item_name
+                    )
 
                 if total_demand is not None:
 
@@ -2890,6 +3875,425 @@ def print_result(response):
                     "RMSE:",
                     rmse
                 )
+    # ========================================================
+    # ANOMALY / VALIDATION
+    # ========================================================
+
+    if "anomaly_validation" in results:
+
+        validation_result = results[
+            "anomaly_validation"
+        ]
+
+        print(
+            "\n--- ANOMALY / VALIDATION ---"
+        )
+
+        print(
+            "Overall Validation Status:",
+            validation_result.get(
+                "validation_status"
+            )
+        )
+
+        print(
+            "Reforecast Recommended:",
+            validation_result.get(
+                "reforecast_recommended"
+            )
+        )
+
+        validations = validation_result.get(
+            "combination_results",
+            []
+        )
+
+        for validation in validations:
+
+            print(
+                "\n"
+                + "-" * 45
+            )
+
+            print(
+                "Restaurant:",
+                validation.get(
+                    "restaurant_id"
+                )
+            )
+
+            print(
+                "Menu Item:",
+                validation.get(
+                    "menu_item_id"
+                )
+            )
+
+            print(
+                "Validation Status:",
+                validation.get(
+                    "validation_status"
+                )
+            )
+
+            print(
+                "Forecast Valid:",
+                validation.get(
+                    "forecast_valid"
+                )
+            )
+
+            metrics = validation.get(
+                "forecast_metrics",
+                {}
+            )
+
+            if metrics:
+
+                for label, key in [
+                    ("Predicted Demand", "predicted_demand"),
+                    ("Historical Baseline", "historical_baseline"),
+                    ("Deviation %", "deviation_pct"),
+                ]:
+
+                    value = metrics.get(
+                        key
+                    )
+
+                    if value is not None:
+
+                        print(
+                            f"{label}:",
+                            value
+                        )
+
+            historical = validation.get(
+                "historical_anomalies",
+                {}
+            )
+
+            if historical:
+
+                for label, key in [
+                    ("Historical Anomaly Count", "count"),
+                    ("Historical Anomaly Rate", "rate"),
+                    ("Recent Demand Anomaly", "recent_anomaly"),
+                ]:
+
+                    value = historical.get(
+                        key
+                    )
+
+                    if value is not None:
+
+                        print(
+                            f"{label}:",
+                            value
+                        )
+
+            issues = validation.get(
+                "issues",
+                []
+            )
+
+            if issues:
+
+                print(
+                    "Issues:"
+                )
+
+                for issue in issues:
+
+                    print(
+                        "  -",
+                        issue.get(
+                            "severity"
+                        ),
+                        issue.get(
+                            "code"
+                        ),
+                        ":",
+                        issue.get(
+                            "message"
+                        )
+                    )
+
+            else:
+
+                print(
+                    "Issues: None"
+                )
+
+        if validations:
+
+            print(
+                "\n"
+                + "-" * 45
+            )
+
+
+    # ========================================================
+    # INVENTORY DECISION
+    # ========================================================
+
+    if "inventory_decision" in results:
+
+        inventory_result = results[
+            "inventory_decision"
+        ]
+
+        print(
+            "\n--- INVENTORY DECISION ---"
+        )
+
+        combination_results = (
+            inventory_result.get(
+                "combination_results",
+                []
+            )
+        )
+
+        if combination_results:
+
+            for combination in combination_results:
+
+                print(
+                    "\n"
+                    + "=" * 45
+                )
+
+                print(
+                    "Restaurant:",
+                    combination.get(
+                        "restaurant_id"
+                    )
+                )
+
+                print(
+                    "Menu Item:",
+                    combination.get(
+                        "menu_item_id"
+                    )
+                )
+
+                if combination.get(
+                    "menu_item_name"
+                ) is not None:
+
+                    print(
+                        "Menu Item Name:",
+                        combination.get(
+                            "menu_item_name"
+                        )
+                    )
+
+                if combination.get(
+                    "forecast_demand"
+                ) is not None:
+
+                    print(
+                        "Forecast Demand:",
+                        round(
+                            float(
+                                combination.get(
+                                    "forecast_demand"
+                                )
+                            ),
+                            2
+                        )
+                    )
+
+                ingredients = combination.get(
+                    "ingredients",
+                    []
+                )
+
+                if not ingredients:
+
+                    print(
+                        "No ingredient inventory decisions were found."
+                    )
+
+                for ingredient in ingredients:
+
+                    print(
+                        "\n"
+                        + "-" * 45
+                    )
+
+                    display_fields = [
+                        ("Ingredient ID", "ingredient_id"),
+                        ("Ingredient", "ingredient_name"),
+                        ("Quantity Per Item", "count_per_item"),
+                        ("Unit", "unit"),
+                        ("Forecast Period Demand", "forecast_period_demand"),
+                        ("Current Stock", "current_stock"),
+                        ("Safety Stock", "safety_stock"),
+                        ("Lead Time Days", "lead_time_days"),
+                        ("Lead Time Demand", "lead_time_demand"),
+                        ("Reorder Point", "reorder_point"),
+                        ("Recommended Order Quantity", "recommended_order_quantity"),
+                        ("Stockout Risk", "stockout_risk"),
+                        ("Order Required", "order_required"),
+                        ("Decision Reason", "decision_reason"),
+                    ]
+
+                    for label, key in display_fields:
+
+                        value = ingredient.get(
+                            key
+                        )
+
+                        if value is None:
+                            continue
+
+                        if isinstance(
+                            value,
+                            (int, float)
+                        ):
+
+                            value = round(
+                                float(value),
+                                2
+                            )
+
+                        print(
+                            f"{label}:",
+                            value
+                        )
+
+            print(
+                "\n"
+                + "=" * 45
+            )
+
+        else:
+
+            print(
+                "No request-specific ingredient inventory "
+                "insights were found."
+            )
+
+            if inventory_result.get(
+                "output_path"
+            ):
+
+                print(
+                    "Complete inventory decisions stored at:",
+                    inventory_result.get(
+                        "output_path"
+                    )
+                )
+
+    # ========================================================
+    # WASTE REDUCTION
+    # ========================================================
+
+    if "waste_reduction" in results:
+
+        waste_result = results["waste_reduction"]
+
+        print(
+            "\n--- WASTE REDUCTION ---"
+        )
+
+        print(
+            "Analysis Date:",
+            waste_result.get("analysis_date")
+        )
+
+        if waste_result.get("analysis_type") == "single_item_waste_reduction":
+            display_fields = [
+                ("Ingredient ID", "ingredient_id"),
+                ("Ingredient", "ingredient_name"),
+                ("Waste Risk", "waste_risk"),
+                ("Days to Expiry", "days_to_expiry"),
+                ("Expected Waste Quantity", "expected_waste_quantity"),
+                ("Promotion Recommended", "promotion_recommended"),
+                ("Recommendations", "recommendations"),
+            ]
+
+            for label, key in display_fields:
+                value = waste_result.get(key)
+                if value is not None:
+                    print(f"{label}:", value)
+
+        else:
+            print(
+                "Inventory Items Analyzed:",
+                waste_result.get("total_inventory_items_analyzed", 0)
+            )
+            print(
+                "Products At Risk:",
+                waste_result.get("products_at_risk", 0)
+            )
+            print(
+                "Critical / High Risk Items:",
+                waste_result.get("critical_or_high_risk_items", 0)
+            )
+            print(
+                "Promotion Recommended Items:",
+                waste_result.get("promotion_recommended_items", 0)
+            )
+            # Print the actual waste-risk items instead of only showing the
+            # generated CSV path. The CSV is still created in the background.
+            items = waste_result.get("items", [])
+            risk_items = [
+                item for item in items
+                if str(item.get("waste_risk", "")).lower()
+                in {"critical", "high", "medium"}
+            ]
+
+            print("\nProducts At Risk of Waste:")
+
+            if not risk_items:
+                print(
+                    "No products currently identified at significant "
+                    "waste risk."
+                )
+            else:
+                for item in risk_items:
+                    print("\n---------------------------------------------")
+                    print("Ingredient:", item.get("ingredient_name"))
+                    print("Ingredient ID:", item.get("ingredient_id"))
+                    print(
+                        "Current Stock:",
+                        item.get("current_stock"),
+                        item.get("unit") or ""
+                    )
+                    print("Expiry Date:", item.get("expiry_date"))
+                    print("Days to Expiry:", item.get("days_to_expiry"))
+                    print(
+                        "Expected Usage Before Expiry:",
+                        item.get("expected_demand_until_expiry")
+                    )
+                    print(
+                        "Surplus Quantity:",
+                        item.get("surplus_quantity")
+                    )
+                    print(
+                        "Waste Risk:",
+                        str(item.get("waste_risk", "")).upper()
+                    )
+                    print(
+                        "Demand Source:",
+                        item.get("demand_source")
+                    )
+
+                    recommendations = item.get("recommendations", [])
+                    print("Recommendations:")
+                    if isinstance(recommendations, list):
+                        for recommendation in recommendations:
+                            print(
+                                "  -",
+                                str(recommendation)
+                                .replace("_", " ")
+                                .title()
+                            )
+                    elif recommendations:
+                        print("  -", recommendations)
+                    else:
+                        print("  - No waste-reduction action required")
 
     # --------------------------------------------------------
     # ERRORS
@@ -2927,7 +4331,7 @@ def start_chatbot():
     )
 
     print(
-        "        MULTI-AGENT DEMAND FORECASTING SYSTEM"
+        "        MULTI-AGENT DEMAND & WASTE REDUCTION SYSTEM"
     )
 
     print(
@@ -2952,6 +4356,18 @@ def start_chatbot():
 
     print(
         "  4. Demand Forecasting Agent"
+    )
+
+    print(
+    "  5. Inventory Decision Agent"
+    )
+
+    print(
+        "  6. Anomaly / Validation Agent"
+    )
+
+    print(
+        "  7. Waste Reduction Agent"
     )
 
     print(

@@ -1,2 +1,2 @@
 is_promotion,mean,median,count,baseline_mean,baseline_count,uplift_pct,interpretation
-1,45.42857142857143,45.0,21,36.47746243739566,1797,24.53873814972214,descriptive_association_not_causal
+1,50.9815668202765,48.0,651,42.2986810618287,53907,20.527556747587173,descriptive_association_not_causal
