@@ -1,0 +1,13 @@
+[theme]
+primaryColor = "#3B82F6"
+backgroundColor = "#F8FBFF"
+secondaryBackgroundColor = "#F7FBFF"
+textColor = "#111827"
+
+# Visible light-blue borders around Streamlit widgets
+borderColor = "#9DCCF3"
+showWidgetBorder = true
+
+# Rounded controls/buttons
+baseRadius = "medium"
+buttonRadius = "medium"

@@ -1,17 +1,17 @@
 is_holiday,holiday_name,mean,median,count,baseline_mean,baseline_count,uplift_pct,interpretation
-1,Christmas Day,21.604026845637584,20.0,149,42.31434266729948,52675,-48.943962061513545,descriptive_association_not_causal
-1,Christmas Day (observed),20.383333333333333,19.0,60,42.31434266729948,52675,-51.828784169946296,descriptive_association_not_causal
-1,Columbus Day,38.375838926174495,36.0,149,42.31434266729948,52675,-9.307727576183423,descriptive_association_not_causal
-1,Independence Day,83.63087248322148,74.0,149,42.31434266729948,52675,97.64190393025156,descriptive_association_not_causal
-1,Independence Day (observed),69.83333333333333,66.0,30,42.31434266729948,52675,65.03466420926,descriptive_association_not_causal
-1,Juneteenth National Independence Day,68.95333333333333,67.0,150,42.31434266729948,52675,62.95499111373522,descriptive_association_not_causal
-1,Juneteenth National Independence Day (observed),64.93333333333334,64.0,60,42.31434266729948,52675,53.45466629099691,descriptive_association_not_causal
-1,Labor Day,56.1,54.0,150,42.31434266729948,52675,32.57915983970627,descriptive_association_not_causal
-1,Martin Luther King Jr. Day,31.633333333333333,29.0,150,42.31434266729948,52675,-25.242054255566703,descriptive_association_not_causal
-1,Memorial Day,54.32666666666667,52.0,150,42.31434266729948,52675,28.388303450239615,descriptive_association_not_causal
-1,New Year's Day,43.36666666666667,39.0,150,42.31434266729948,52675,2.486920351430677,descriptive_association_not_causal
-1,New Year's Day (observed),39.666666666666664,39.0,60,42.31434266729948,52675,-6.25715970929861,descriptive_association_not_causal
-1,Thanksgiving Day,21.89189189189189,21.0,148,42.31434266729948,52675,-48.26366070715322,descriptive_association_not_causal
-1,Veterans Day,40.32666666666667,38.5,150,42.31434266729948,52675,-4.697404887654999,descriptive_association_not_causal
-1,Veterans Day (observed),48.5,43.0,30,42.31434266729948,52675,14.618346741992049,descriptive_association_not_causal
-1,Washington's Birthday,30.966216216216218,29.0,148,42.31434266729948,52675,-26.818628710149127,descriptive_association_not_causal
+1,Christmas Day,21.8,21.0,5,48.45688178183895,1751,-55.01155006600038,descriptive_association_not_causal
+1,Christmas Day (observed),26.0,26.0,2,48.45688178183895,1751,-46.34405053743165,descriptive_association_not_causal
+1,Columbus Day,39.2,42.0,5,48.45688178183895,1751,-19.103337733358472,descriptive_association_not_causal
+1,Independence Day,112.8,108.0,5,48.45688178183895,1751,132.78427305298885,descriptive_association_not_causal
+1,Independence Day (observed),113.0,113.0,1,48.45688178183895,1751,133.19701112577786,descriptive_association_not_causal
+1,Juneteenth National Independence Day,80.4,83.0,5,48.45688178183895,1751,65.92070526117293,descriptive_association_not_causal
+1,Juneteenth National Independence Day (observed),75.5,75.5,2,48.45688178183895,1751,55.80862247784273,descriptive_association_not_causal
+1,Labor Day,64.6,63.0,5,48.45688178183895,1751,33.31439751084291,descriptive_association_not_causal
+1,Martin Luther King Jr. Day,66.4,39.0,5,48.45688178183895,1751,37.02904016594382,descriptive_association_not_causal
+1,Memorial Day,57.2,56.0,5,48.45688178183895,1751,18.04308881765038,descriptive_association_not_causal
+1,New Year's Day,46.2,45.0,5,48.45688178183895,1751,-4.657505185743915,descriptive_association_not_causal
+1,New Year's Day (observed),42.5,42.5,2,48.45688178183895,1751,-12.293159532340193,descriptive_association_not_causal
+1,Thanksgiving Day,25.4,25.0,5,48.45688178183895,1751,-47.58226475579861,descriptive_association_not_causal
+1,Veterans Day,46.2,51.0,5,48.45688178183895,1751,-4.657505185743915,descriptive_association_not_causal
+1,Veterans Day (observed),49.0,49.0,1,48.45688178183895,1751,1.1208278333018962,descriptive_association_not_causal
+1,Washington's Birthday,31.4,32.0,5,48.45688178183895,1751,-35.20012257212899,descriptive_association_not_causal

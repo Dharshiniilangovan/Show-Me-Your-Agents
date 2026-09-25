@@ -16,9 +16,9 @@ def agent(state):
 
 Important integration note
 --------------------------
-The current inventory dataset is ingredient-level:
+The inventory dataset is restaurant + ingredient level:
 
-    ingredient_id / ingredient_name / current_stock / expiry_date / ...
+    restaurant_id / ingredient_id / ingredient_name / current_stock / expiry_date / ...
 
 The Demand Forecasting Agent is menu-item-level:
 
@@ -137,6 +137,7 @@ def load_inventory(state):
 
 def validate_inventory(df):
     required = [
+        "restaurant_id",
         "ingredient_id",
         "ingredient_name",
         "current_stock",
@@ -185,11 +186,7 @@ def get_analysis_date(request, inventory_df):
     Dec-2025 inventory snapshot. If no date is supplied, use the latest
     received_date when available, otherwise the latest inventory date.
     """
-    explicit = (
-        request.get("analysis_date")
-        or request.get("current_date")
-        or request.get("forecast_start")
-    )
+    explicit =   pd.Timestamp("01-01-2026")
 
     if explicit is not None:
         parsed = pd.to_datetime(explicit, errors="coerce")
@@ -419,6 +416,14 @@ def _forecast_for_inventory_item(
 
     candidate = forecast_df.copy()
 
+    # Restrict demand to the restaurant that owns this inventory row.
+    restaurant_id = inventory_row.get("restaurant_id")
+    if restaurant_id is not None and "restaurant_id" in candidate.columns:
+        candidate = candidate[
+            candidate["restaurant_id"].astype(str).str.strip().str.upper()
+            == str(restaurant_id).strip().upper()
+        ]
+
     if "ingredient_id" in candidate.columns:
         candidate = candidate[
             candidate["ingredient_id"].map(_normalize_id)
@@ -533,6 +538,9 @@ def build_recommendations(
     if current_stock <= 0:
         return ["No stock available; no waste-reduction action required."]
 
+    # A displayed value of 0 can mean expired or expiring today.
+    # The caller handles already-expired products separately before
+    # reaching this function.
     if surplus_quantity <= 0:
         if days_to_expiry <= HIGH_DAYS:
             recommendations.append(
@@ -593,9 +601,23 @@ def analyze_inventory_row(
     request,
 ):
     expiry_date = pd.Timestamp(row["expiry_date"]).normalize()
-    days_to_expiry = int(
+
+    # Keep the real value internally so expired products can be
+    # distinguished from products expiring today.
+    actual_days_to_expiry = int(
         (expiry_date - analysis_date).days
     )
+
+    # User-facing value must never be negative.
+    remaining_days = max(0, actual_days_to_expiry)
+    days_to_expiry = remaining_days
+
+    if actual_days_to_expiry < 0:
+        expiry_status = "expired"
+    elif actual_days_to_expiry == 0:
+        expiry_status = "expires_today"
+    else:
+        expiry_status = "approaching_expiry"
 
     current_stock = _safe_float(
         row.get("current_stock"),
@@ -701,27 +723,51 @@ def analyze_inventory_row(
         expected_demand_until_expiry=expected_demand_until_expiry,
     )
 
-    recommendations = build_recommendations(
-        days_to_expiry=days_to_expiry,
-        waste_risk=waste_risk,
-        surplus_quantity=surplus_quantity,
-        surplus_ratio=surplus_ratio,
-        current_stock=current_stock,
-    )
+    # Expired food must not receive selling, promotion, or
+    # reallocation recommendations. Flag it for removal instead.
+    if expiry_status == "expired":
+        waste_risk = "critical" if current_stock > 0 else "none"
+        recommendations = (
+            ["remove_from_usable_inventory_and_follow_disposal_procedure"]
+            if current_stock > 0
+            else ["No stock available; no waste-reduction action required."]
+        )
+    else:
+        recommendations = build_recommendations(
+            days_to_expiry=days_to_expiry,
+            waste_risk=waste_risk,
+            surplus_quantity=surplus_quantity,
+            surplus_ratio=surplus_ratio,
+            current_stock=current_stock,
+        )
 
     promotion_recommended = (
-        "promotion_or_markdown" in recommendations
+        expiry_status != "expired"
+        and "promotion_or_markdown" in recommendations
     )
 
     return {
+        "restaurant_id": row.get("restaurant_id"),
         "ingredient_id": row.get("ingredient_id"),
         "ingredient_name": row.get("ingredient_name"),
         "category": row.get("category"),
         "current_stock": round(current_stock, 2),
         "unit": row.get("unit"),
         "expiry_date": expiry_date.strftime("%Y-%m-%d"),
-        "days_to_expiry": days_to_expiry,
-        "expiry_risk": calculate_expiry_risk(days_to_expiry),
+        "days_to_expiry": remaining_days,
+        "remaining_days": remaining_days,
+        "days_expired": abs(actual_days_to_expiry) if actual_days_to_expiry < 0 else 0,
+        "status": (
+            "Expired" if actual_days_to_expiry < 0
+            else "Near Expiry" if 1 <= remaining_days <= 4
+            else "Safe"
+        ),
+        "expiry_status": expiry_status,
+        "expiry_risk": (
+            "critical"
+            if expiry_status in {"expired", "expires_today"}
+            else calculate_expiry_risk(days_to_expiry)
+        ),
         "forecasted_demand": (
             round(forecasted_demand, 2)
             if forecasted_demand is not None
@@ -766,6 +812,8 @@ def analyze_inventory_row(
 def filter_inventory_scope(df, request):
     result = df.copy()
 
+    restaurant_id = request.get("restaurant_id")
+
     ingredient_id = (
         request.get("ingredient_id")
         or request.get("inventory_item_id")
@@ -775,6 +823,13 @@ def filter_inventory_scope(df, request):
         request.get("ingredient_name")
         or request.get("inventory_item_name")
     )
+
+    # Keep inventory scoped to the requested restaurant.
+    if restaurant_id is not None:
+        result = result[
+            result["restaurant_id"].astype(str).str.strip().str.upper()
+            == str(restaurant_id).strip().upper()
+        ]
 
     if ingredient_id is not None:
         result = result[
@@ -844,14 +899,26 @@ def agent(state):
 
     records = []
 
-    # Waste-reduction scope: only inventory expiring in the next 1 to 3 days.
-    # Already-expired items (negative days), items expiring today (0 days),
-    # and items more than 3 days from expiry are excluded from this analysis.
+    # Waste-reduction scope:
+    # - include already-expired products
+    # - include products expiring today
+    # - include products expiring within the next 1 to 3 days
+    # - exclude only products more than 3 days from expiry
+    #
+    # Expired products are displayed with days_to_expiry = 0 by
+    # analyze_inventory_row(), while expiry_status preserves the fact
+    # that they are already expired.
     for _, row in scoped_inventory.iterrows():
         expiry_date = pd.Timestamp(row["expiry_date"]).normalize()
-        days_to_expiry = int((expiry_date - analysis_date).days)
+        actual_days_to_expiry = int(
+            (expiry_date - analysis_date).days
+        )
 
-        if not (1 <= days_to_expiry <= 3):
+        remaining_days = max(0, actual_days_to_expiry)
+
+        # Keep expired products and products with 1-4 days remaining.
+        # Products expiring today (0 days) and safe products (>4 days) are excluded.
+        if not (actual_days_to_expiry < 0 or 1 <= remaining_days <= 4):
             continue
 
         records.append(
@@ -885,7 +952,7 @@ def agent(state):
             "critical_or_high_risk_items": 0,
             "promotion_recommended_items": 0,
             "items": [],
-            "message": "No inventory items expire within the next 1 to 3 days.",
+            "message": "No expired items or inventory items expiring within the next 1 to 4 days.",
         }
 
     # --------------------------------------------------------
@@ -954,9 +1021,42 @@ def agent(state):
         result_df["promotion_recommended"] == True
     ]
 
+    expired_df = result_df[result_df["status"] == "Expired"].copy()
+    near_expiry_df = result_df[result_df["status"] == "Near Expiry"].copy()
+
+    expired_products = [
+        {
+            "restaurant_id": row.get("restaurant_id"),
+            "product_name": row.get("ingredient_name"),
+            "category": row.get("category"),
+            "expiry_date": row.get("expiry_date"),
+            "days_expired": row.get("days_expired"),
+            "quantity": row.get("current_stock"),
+            "status": "Expired",
+        }
+        for _, row in expired_df.iterrows()
+    ]
+
+    near_expiry_products = [
+        {
+            "restaurant_id": row.get("restaurant_id"),
+            "product_name": row.get("ingredient_name"),
+            "category": row.get("category"),
+            "expiry_date": row.get("expiry_date"),
+            "days_remaining": row.get("remaining_days"),
+            "quantity": row.get("current_stock"),
+            "status": "Near Expiry",
+        }
+        for _, row in near_expiry_df.iterrows()
+    ]
+
     return {
         "analysis_type": "dataset_waste_reduction",
         "analysis_date": analysis_date.strftime("%Y-%m-%d"),
+        "expired_count": int(len(expired_df)),
+        "near_expiry_count": int(len(near_expiry_df)),
+        "expired_products": expired_products,
+        "near_expiry_products": near_expiry_products,
         "waste_risk_file": str(output_path),
         "total_inventory_items_analyzed": int(
             len(result_df)

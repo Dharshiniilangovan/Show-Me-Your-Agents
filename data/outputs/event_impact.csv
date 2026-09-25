@@ -1,59 +1,6 @@
 is_special_event,special_event_name,mean,median,count,baseline_mean,baseline_count,uplift_pct,interpretation
-1,American Royal BBQ,69.7,66.5,40,41.49716194923781,52677,67.9632936952697,descriptive_association_not_causal
-1,Ann Arbor Art Fair,77.9,76.5,30,41.49716194923781,52677,87.72368118883085,descriptive_association_not_causal
-1,Aquatennial Festival,95.8,95.0,30,41.49716194923781,52677,130.85916120526306,descriptive_association_not_causal
-1,Balloon Glow Festival,71.73333333333333,71.5,30,41.49716194923781,52677,72.86322717944542,descriptive_association_not_causal
-1,Bengals Home Game Weekend,52.0,49.0,30,41.49716194923781,52677,25.309774349412105,descriptive_association_not_causal
-1,Brat Fest,52.833333333333336,49.5,30,41.49716194923781,52677,27.317943810139877,descriptive_association_not_causal
-1,Brewers Playoff Games,55.3,54.0,30,41.49716194923781,52677,33.26212541389402,descriptive_association_not_causal
-1,Cardinals Playoff Games,71.63333333333334,71.0,30,41.49716194923781,52677,72.6222468441581,descriptive_association_not_causal
-1,Chicago Blues Festival,103.43333333333334,99.0,30,41.49716194923781,52677,149.25399346552933,descriptive_association_not_causal
-1,Chiefs Home Game Weekend,56.2,58.0,30,41.49716194923781,52677,35.430948431480026,descriptive_association_not_causal
-1,Cincinnati Flying Pig Marathon,56.3,55.5,30,41.49716194923781,52677,35.671928766767344,descriptive_association_not_causal
-1,Cincinnati Music Festival,73.03333333333333,75.5,30,41.49716194923781,52677,75.99597153818071,descriptive_association_not_causal
-1,Cleveland Air Show,44.5,46.5,30,41.49716194923781,52677,7.236249202862277,descriptive_association_not_causal
-1,Cleveland Marathon Weekend,44.43333333333333,43.5,30,41.49716194923781,52677,7.0755956460040625,descriptive_association_not_causal
-1,College World Series,57.3,54.5,110,41.49716194923781,52677,38.081732119640655,descriptive_association_not_causal
-1,Columbus Arts Festival,51.56666666666667,49.0,30,41.49716194923781,52677,24.26552622983369,descriptive_association_not_causal
-1,Cubs Home Opener Week,65.58333333333333,64.5,60,41.49716194923781,52677,58.04293655927455,descriptive_association_not_causal
-1,Cubs Labor Day Series,66.1,62.0,30,41.49716194923781,52677,59.288001624925755,descriptive_association_not_causal
-1,Cubs vs Cardinals Series,82.72413793103448,77.0,29,41.49716194923781,52677,99.34890494976104,descriptive_association_not_causal
-1,Des Moines Arts Festival,46.2,47.0,30,41.49716194923781,52677,11.332914902746927,descriptive_association_not_causal
-1,Detroit Grand Prix Weekend,75.8,74.5,30,41.49716194923781,52677,82.66309414779687,descriptive_association_not_causal
-1,Detroit Jazz Festival,56.41025641025641,57.0,39,41.49716194923781,52677,35.93762503387901,descriptive_association_not_causal
-1,Fair Saint Louis,105.35,103.0,20,41.49716194923781,52677,153.8727832252032,descriptive_association_not_causal
-1,Fourth of July Downtown Festival,127.8,124.0,10,41.49716194923781,52677,207.972868497209,descriptive_association_not_causal
-1,Gen Con Gaming Convention,79.06666666666666,82.0,30,41.49716194923781,52677,90.53511843384969,descriptive_association_not_causal
-1,Halloween on State Street,60.5,63.5,10,41.49716194923781,52677,45.79310284883525,descriptive_association_not_causal
-1,Indianapolis 500 Week,97.08474576271186,92.0,59,41.49716194923781,52677,133.9551458518359,descriptive_association_not_causal
-1,Iowa State Fair,52.48148148148148,51.5,108,41.49716194923781,52677,26.470050037832582,descriptive_association_not_causal
-1,KC Riverfest,91.2,94.5,10,41.49716194923781,52677,119.77406578204585,descriptive_association_not_causal
-1,Lollapalooza Weekend,117.43333333333334,104.5,30,41.49716194923781,52677,182.9912404057557,descriptive_association_not_causal
-1,May Day Parade,74.06666666666666,76.5,30,41.49716194923781,52677,78.48610166948313,descriptive_association_not_causal
-1,Minnesota State Fair,100.76923076923077,94.0,39,41.49716194923781,52677,142.83403017415662,descriptive_association_not_causal
-1,New Year's Eve on the Flats,35.4,33.5,10,41.49716194923781,52677,-14.692961308284836,descriptive_association_not_causal
-1,OSU Football Season Opener,76.56666666666666,73.0,30,41.49716194923781,52677,84.51061005166642,descriptive_association_not_causal
-1,OSU Homecoming Weekend,65.93333333333334,63.0,30,41.49716194923781,52677,58.88636773278024,descriptive_association_not_causal
-1,Oktoberfest Kickoff,61.233333333333334,63.0,30,41.49716194923781,52677,47.56029197427567,descriptive_association_not_causal
-1,Oktoberfest Zinzinnati,66.225,67.5,40,41.49716194923781,52677,59.58922704403493,descriptive_association_not_causal
-1,Omaha Freedom Festival,63.7,61.5,10,41.49716194923781,52677,53.50447357802983,descriptive_association_not_causal
-1,Omaha Marathon Weekend,39.2,39.5,30,41.49716194923781,52677,-5.535708567366249,descriptive_association_not_causal
-1,Rhythm and Booms,56.93333333333333,57.5,30,41.49716194923781,52677,37.19813755692043,descriptive_association_not_causal
-1,Rock Hall Induction Weekend,59.766666666666666,51.5,30,41.49716194923781,52677,44.025913723394815,descriptive_association_not_causal
-1,St. Patrick's Day Parade,59.5,57.0,20,41.49716194923781,52677,43.383299495961936,descriptive_association_not_causal
-1,Summerfest Main Week,105.38,92.0,50,41.49716194923781,52677,153.94507732578938,descriptive_association_not_causal
-1,Summerfest Opening Weekend,74.66666666666667,71.0,39,41.49716194923781,52677,79.93198368120716,descriptive_association_not_causal
-1,Super Bowl Watch Party (KC),47.233333333333334,47.5,30,41.49716194923781,52677,13.823045034049342,descriptive_association_not_causal
-1,Taste of Chicago,128.76666666666668,122.0,30,41.49716194923781,52677,210.30234507165324,descriptive_association_not_causal
-1,Thanksgiving Turkey Trot,52.96666666666667,51.0,30,41.49716194923781,52677,27.639250923856306,descriptive_association_not_causal
-1,The Game Week (OSU vs Michigan),62.36666666666667,63.0,30,41.49716194923781,52677,50.291402440865426,descriptive_association_not_causal
-1,The Game Week (UM vs OSU),59.8,58.0,30,41.49716194923781,52677,44.106240501823926,descriptive_association_not_causal
-1,UM Football Season Opener,70.72413793103448,74.0,29,41.49716194923781,52677,70.43126471528132,descriptive_association_not_causal
-1,UM Homecoming Weekend,57.4,58.5,30,41.49716194923781,52677,38.322712454927974,descriptive_association_not_causal
-1,UW Badgers Football Opener,51.766666666666666,50.0,30,41.49716194923781,52677,24.747486900408333,descriptive_association_not_causal
-1,UW Homecoming Weekend,42.233333333333334,41.0,30,41.49716194923781,52677,1.7740282696827814,descriptive_association_not_causal
-1,Winter Carnival,49.63333333333333,46.5,30,41.49716194923781,52677,19.606573080945267,descriptive_association_not_causal
-1,Winter Classic Hockey,51.8,48.5,10,41.49716194923781,52677,24.82781367883744,descriptive_association_not_causal
-1,Woodward Dream Cruise,71.06666666666666,73.5,30,41.49716194923781,52677,71.25669161086321,descriptive_association_not_causal
-1,World Food & Music Festival,43.5,40.0,30,41.49716194923781,52677,4.8264458499889695,descriptive_association_not_causal
-1,Wrigleyville Street Fair,77.72413793103448,81.0,29,41.49716194923781,52677,87.2998881853945,descriptive_association_not_causal
+1,Chicago Blues Festival,90.0,91.0,15,47.42353610005685,1759,89.77918434870172,descriptive_association_not_causal
+1,Halloween on State Street,53.2,57.0,5,47.42353610005685,1759,12.180584526121475,descriptive_association_not_causal
+1,Lollapalooza Weekend,90.8,92.0,15,47.42353610005685,1759,91.46611043180128,descriptive_association_not_causal
+1,St. Patrick's Day Parade,51.2,51.0,5,47.42353610005685,1759,7.963269318372546,descriptive_association_not_causal
+1,Taste of Chicago,106.93333333333334,108.0,15,47.42353610005685,1759,125.48578644097597,descriptive_association_not_causal

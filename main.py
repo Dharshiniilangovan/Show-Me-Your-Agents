@@ -4262,7 +4262,7 @@ def print_result(response):
                         item.get("unit") or ""
                     )
                     print("Expiry Date:", item.get("expiry_date"))
-                    print("Days to Expiry:", item.get("days_to_expiry"))
+                    print("Days to Expiry:", max(item.get("days_to_expiry"),0))
                     print(
                         "Expected Usage Before Expiry:",
                         item.get("expected_demand_until_expiry")
