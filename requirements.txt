@@ -5,3 +5,5 @@ pytest
 streamlit
 plotly
 holidays
+scikit-learn
+numpy
