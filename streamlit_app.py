@@ -973,7 +973,7 @@ with c4:
     st.button(
         "🔎 View Forecast",
         type="primary",
-        use_container_width=True
+        width="stretch"
     )
 
 start_date, end_date = date_pair(chosen_dates)
@@ -1237,7 +1237,7 @@ with trend_col:
     )
     st.plotly_chart(
         fig,
-        use_container_width=True,
+        width="stretch",
         config={"displayModeBar": False},
     )
 
@@ -1279,7 +1279,7 @@ with expiry_col:
     )
     st.plotly_chart(
         donut,
-        use_container_width=True,
+        width="stretch",
         config={"displayModeBar": False},
     )
 
@@ -1308,7 +1308,7 @@ with daily_col:
 
     st.dataframe(
         pd.concat([display, total_row], ignore_index=True),
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -1529,7 +1529,7 @@ if not filtered.empty:
 
     st.dataframe(
         styled_inventory,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         height=315,
     )
@@ -1555,7 +1555,7 @@ with d1:
         forecast_export.to_csv(index=False).encode("utf-8"),
         file_name=f"forecast_{restaurant_id}_{menu_item_id}.csv",
         mime="text/csv",
-        use_container_width=True,
+        width="stretch",
     )
 
 with d2:
@@ -1580,7 +1580,7 @@ with d2:
         inventory_export.to_csv(index=False).encode("utf-8"),
         file_name=f"ingredient_report_{restaurant_id}_{menu_item_id}.csv",
         mime="text/csv",
-        use_container_width=True,
+        width="stretch"
     )
 
 
