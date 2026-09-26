@@ -31,7 +31,9 @@ from agents.waste_reduction.agent import agent as waste_reduction_agent
 # ============================================================
 
 DATASET_PATH = (
-   r"C:\Users\saaral\Desktop\hackathon\code\Show-Me-Your-Agents\data\qsr_demand_dataset.csv"
+    Path(__file__).resolve().parent
+    / "data"
+    / "qsr_demand_dataset.csv"
 )
 
 
