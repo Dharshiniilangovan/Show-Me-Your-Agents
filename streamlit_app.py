@@ -871,7 +871,7 @@ except Exception as exc:
 st.markdown(
     """
     <div class="hero">
-        <div class="hero-title">🍴 QSR Demand Forecast &amp; Inventory Dashboard</div>
+        <div class="hero-title">🍴 Demand Forecast &amp; Inventory Dashboard</div>
         <div class="hero-subtitle">
             Restaurant-wise and Menu Item-wise Forecast, Validation,
             Inventory and Ingredient Expiry Insights
